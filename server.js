@@ -52,7 +52,9 @@ const assetsPath = path.join(__dirname, 'assets');
 const useRedis = Redis && (
   process.env.UPSTASH_REDIS_REST_URL || 
   process.env.UPSTASH_REDIS_REST_TOKEN ||
-  process.env.REDIS_URL
+  process.env.KV_REST_API_URL ||
+  process.env.KV_REST_API_TOKEN ||
+  (process.env.REDIS_URL && process.env.REDIS_URL.startsWith('https://'))
 );
 
 if (useRedis && Redis) {
@@ -62,20 +64,25 @@ if (useRedis && Redis) {
       console.log('✅ Upstash Redis initialized successfully (fromEnv)');
       console.log('   Redis URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
       console.log('   Redis Token:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
-    } else if (process.env.REDIS_URL) {
-      if (process.env.REDIS_URL.startsWith('https://')) {
-        redisClient = new Redis({
-          url: process.env.REDIS_URL,
-          token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN || process.env.KV_REST_API_TOKEN,
-        });
-        console.log('✅ Redis initialized successfully (REDIS_URL - Upstash REST API)');
-        console.log('   Redis URL: Set');
-        console.log('   Redis Token:', (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN || process.env.KV_REST_API_TOKEN) ? 'Set' : 'Not set');
-      } else {
-        console.warn('⚠️  REDIS_URL is not an Upstash REST API URL (must start with https://)');
-        console.warn('   Standard Redis URLs (redis://) are not supported. Use Upstash Redis REST API.');
-        redisClient = null;
-      }
+    } else if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      redisClient = new Redis({
+        url: process.env.KV_REST_API_URL,
+        token: process.env.KV_REST_API_TOKEN,
+      });
+      console.log('✅ Upstash Redis initialized successfully (KV_REST_API_URL)');
+      console.log('   Redis URL: Set');
+      console.log('   Redis Token: Set');
+    } else if (process.env.REDIS_URL && process.env.REDIS_URL.startsWith('https://')) {
+      redisClient = new Redis({
+        url: process.env.REDIS_URL,
+        token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN,
+      });
+      console.log('✅ Redis initialized successfully (REDIS_URL - Upstash REST API)');
+      console.log('   Redis URL: Set');
+      console.log('   Redis Token:', (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN) ? 'Set' : 'Not set');
+    } else {
+      console.warn('⚠️  Redis environment variables not properly configured');
+      redisClient = null;
     }
   } catch (err) {
     console.error('❌ Failed to initialize Redis:', err);
@@ -89,6 +96,8 @@ if (useRedis && Redis) {
     console.log('   Environment variables not set:');
     console.log('   - UPSTASH_REDIS_REST_URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
     console.log('   - UPSTASH_REDIS_REST_TOKEN:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
+    console.log('   - KV_REST_API_URL:', process.env.KV_REST_API_URL ? 'Set' : 'Not set');
+    console.log('   - KV_REST_API_TOKEN:', process.env.KV_REST_API_TOKEN ? 'Set' : 'Not set');
     console.log('   - REDIS_URL:', process.env.REDIS_URL ? 'Set' : 'Not set');
   }
 }
