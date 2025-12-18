@@ -239,13 +239,13 @@ function renderSouthParkCounter({
   };
 
   const characterScales = {
-    '/assets/cartman.png': 0.8,
-    '/assets/mr mackey.png': 0.9,
-    '/assets/stan.png': 0.8,
-    '/assets/kenny.png': 0.8,
-    '/assets/timmy.png': 1.0,
-    '/assets/wendy.png': 0.8,
-    '/assets/kyle.png': 0.9,
+    '/assets/cartman.png': 0.6,
+    '/assets/mr mackey.png': 0.7,
+    '/assets/stan.png': 0.6,
+    '/assets/kenny.png': 0.6,
+    '/assets/timmy.png': 0.8,
+    '/assets/wendy.png': 0.6,
+    '/assets/kyle.png': 0.7,
   };
 
   let totalWidth = paddingX * 2;
