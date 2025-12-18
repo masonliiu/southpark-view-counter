@@ -194,13 +194,13 @@ function renderSouthParkCounter({
   };
 
   const characterScales = {
-    '/assets/cartman.png': 1.0,
-    '/assets/mr mackey.png': 1.1,
-    '/assets/stan.png': 1.0,
-    '/assets/kenny.png': 1.0,
-    '/assets/timmy.png': 1.2,
-    '/assets/wendy.png': 1.0,
-    '/assets/kyle.png': 1.1,
+    '/assets/cartman.png': 0.8,
+    '/assets/mr mackey.png': 0.9,
+    '/assets/stan.png': 0.8,
+    '/assets/kenny.png': 0.8,
+    '/assets/timmy.png': 1.0,
+    '/assets/wendy.png': 0.8,
+    '/assets/kyle.png': 0.9,
   };
 
   let totalWidth = paddingX * 2;
