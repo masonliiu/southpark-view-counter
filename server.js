@@ -8,7 +8,6 @@ let sharp;
 try {
   sharp = require('sharp');
 } catch (e) {
-  // sharp not available, will use original images
   console.warn('sharp not available, using original images (may be large)');
 }
 
@@ -29,7 +28,6 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    // Use X-Forwarded-For header if available (for Vercel/proxies)
     return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
            req.headers['x-real-ip'] || 
            req.ip || 
@@ -39,8 +37,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Use /tmp for Vercel serverless functions (only writable location)
-// Fallback to local file for development
 const jsonPath = process.env.VERCEL === '1' || process.env.VERCEL_ENV
   ? '/tmp/counters.json' 
   : path.join(__dirname, 'counters.json');
@@ -57,12 +53,8 @@ async function imageToDataUri(imagePath) {
     const fullPath = path.join(assetsPath, path.basename(imagePath));
     let imageBuffer;
     
-    // Aggressively compress images for GitHub compatibility
-    // GitHub's camo proxy may block data URIs, but we'll try to minimize size
     if (sharp) {
       try {
-        // Resize to 120px max width with aggressive compression
-        // This should keep total SVG under 500KB
         imageBuffer = await sharp(fullPath)
           .resize(120, null, { 
             withoutEnlargement: true,
@@ -109,12 +101,10 @@ function readStore() {
 
 function writeStore(store) {
   try {
-    // Ensure /tmp directory exists (it should, but just in case)
     if (jsonPath.startsWith('/tmp')) {
       try {
         fs.mkdirSync('/tmp', { recursive: true });
       } catch {
-        // Directory might already exist, ignore
       }
     }
     fs.writeFileSync(jsonPath, JSON.stringify(store), 'utf8');
@@ -241,14 +231,10 @@ function renderSouthParkCounter({
     '/assets/wendy.png',
   ];
 
-  // Always use data URIs - GitHub's camo proxy blocks external image refs in SVGs
-  // This makes the SVG self-contained and works on GitHub
-  // Images should be pre-loaded in cache at startup
   const getImageHref = (relativePath) => {
     if (imageDataUriCache.has(relativePath)) {
       return imageDataUriCache.get(relativePath);
     }
-    // Fallback - return path if not cached (shouldn't happen)
     return relativePath;
   };
 
@@ -362,7 +348,6 @@ function renderSouthParkCounter({
     currentX += charWidth + digitGap;
   });
 
-  // Ensure SVG is properly formatted for GitHub
   return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -428,7 +413,6 @@ app.get('/@:name', async (req, res) => {
     return res.status(400).type('text/plain').send('Invalid name');
   }
 
-  // Check if request is from GitHub's camo proxy
   const userAgent = req.get('user-agent') || '';
   const isGitHub = userAgent.includes('github-camo') || 
                    req.get('referer')?.includes('github.com') ||
@@ -455,8 +439,6 @@ app.get('/@:name', async (req, res) => {
     value = inc === 1 ? getAndIncrementCounter(name) : peekCounter(name);
   }
 
-  // Ensure all images are loaded before rendering
-  // In serverless, cache might not persist, so load on demand
   const characterImages = [
     '/assets/stan.png',
     '/assets/kyle.png',    
@@ -467,7 +449,6 @@ app.get('/@:name', async (req, res) => {
     '/assets/wendy.png',
   ];
   
-  // Load any missing images
   for (const imgPath of characterImages) {
     if (!imageDataUriCache.has(imgPath)) {
       try {
@@ -489,7 +470,6 @@ app.get('/@:name', async (req, res) => {
     prefix,
   });
 
-  // Set proper headers for GitHub compatibility
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -497,7 +477,6 @@ app.get('/@:name', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('X-Content-Type-Options', 'nosniff');
 
-  // Log SVG size for debugging
   const svgSize = Buffer.byteLength(svg, 'utf8') / 1024;
   console.log(`SVG size: ${svgSize.toFixed(2)}KB`);
 
@@ -508,7 +487,6 @@ app.use((req, res) => {
   res.status(404).type('text/plain').send('Not found');
 });
 
-// Pre-load and compress all images at startup
 const characterImages = [
   '/assets/stan.png',
   '/assets/kyle.png',    
@@ -536,13 +514,10 @@ async function preloadImages() {
   console.log(`All images loaded. Total size: ${totalSize.toFixed(2)}MB`);
 }
 
-// Pre-load images on startup
 preloadImages().catch(console.error);
 
-// Export for Vercel serverless functions
 module.exports = app;
 
-// Only listen if not in Vercel environment
 if (process.env.VERCEL !== '1') {
   app.listen(PORT, () => {
     console.log(`South Park counter listening on http://localhost:${PORT}`);
