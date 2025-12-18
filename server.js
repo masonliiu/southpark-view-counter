@@ -21,6 +21,14 @@ const limiter = rateLimit({
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use X-Forwarded-For header if available (for Vercel/proxies)
+    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+           req.headers['x-real-ip'] || 
+           req.ip || 
+           req.socket.remoteAddress || 
+           'unknown';
+  },
 });
 app.use(limiter);
 
@@ -175,6 +183,7 @@ function renderSouthParkCounter({
   darkmode,
   pixelated,
   prefix,
+  baseUrl = '',
 }) {
   const prefersDark = false;
   const palette = pickPalette(darkmode, prefersDark);
@@ -198,7 +207,16 @@ function renderSouthParkCounter({
     '/assets/wendy.png',
   ];
 
+  // Use external URLs for GitHub compatibility (camo proxy can't handle data URIs)
   const getImageHref = (relativePath) => {
+    if (baseUrl) {
+      // Encode the path properly, especially for files with spaces
+      const encodedPath = relativePath.split('/').map(part => 
+        part === '' ? '' : encodeURIComponent(part)
+      ).join('/');
+      return `${baseUrl}${encodedPath}`;
+    }
+    // Fallback to data URI if no baseUrl (for local dev)
     return imageToDataUri(relativePath);
   };
 
@@ -393,6 +411,11 @@ app.get('/@:name', (req, res) => {
     value = inc === 1 ? getAndIncrementCounter(name) : peekCounter(name);
   }
 
+  // Construct base URL for image references (GitHub camo needs absolute URLs)
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host') || req.hostname;
+  const baseUrl = `${protocol}://${host}`;
+
   const svg = renderSouthParkCounter({
     value,
     padding,
@@ -402,6 +425,7 @@ app.get('/@:name', (req, res) => {
     darkmode,
     pixelated,
     prefix,
+    baseUrl,
   });
 
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
