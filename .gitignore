@@ -1,0 +1,5 @@
+node_modules/
+counter.sqlite
+*.sqlite
+.env
+.DS_Store
