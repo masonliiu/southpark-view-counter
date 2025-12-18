@@ -9,7 +9,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(morgan('dev'));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/assets', express.static(path.join(__dirname, 'assets'), {
+  setHeaders: (res, path) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+  }
+}));
 
 const limiter = rateLimit({
   windowMs: 60 * 1000,
@@ -160,7 +165,6 @@ function renderSouthParkCounter({
   darkmode,
   pixelated,
   prefix,
-  useDataUris = true,
 }) {
   const prefersDark = false;
   const palette = pickPalette(darkmode, prefersDark);
@@ -184,12 +188,9 @@ function renderSouthParkCounter({
     '/assets/wendy.png',
   ];
 
-  // Convert image paths to data URIs or URLs
+  // Always use data URIs for GitHub compatibility (camo proxy strips external image refs)
   const getImageHref = (relativePath) => {
-    if (useDataUris) {
-      return imageToDataUri(relativePath);
-    }
-    return relativePath;
+    return imageToDataUri(relativePath);
   };
 
   const characterScales = {
@@ -275,6 +276,7 @@ function renderSouthParkCounter({
     digitsSvg += `
       <g transform="translate(${currentX}, ${charBaseY})">
         <image
+          xlink:href="${imgHref}"
           href="${imgHref}"
           x="0"
           y="0"
@@ -304,6 +306,7 @@ function renderSouthParkCounter({
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg
   xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
   width="${scaledWidth}"
   height="${scaledHeight}"
   viewBox="0 0 ${totalWidth} ${totalHeight}"
@@ -390,13 +393,13 @@ app.get('/@:name', (req, res) => {
     darkmode,
     pixelated,
     prefix,
-    useDataUris: true, // Always use data URIs for GitHub compatibility
   });
 
-  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
+  res.setHeader('Access-Control-Allow-Origin', '*');
 
   return res.send(svg);
 });
