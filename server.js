@@ -10,6 +10,12 @@ try {
 } catch (e) {
   console.warn('sharp not available, using original images (may be large)');
 }
+let kv;
+try {
+  kv = require('@vercel/kv');
+} catch (e) {
+  console.warn('@vercel/kv not available, using file system storage');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +47,7 @@ const jsonPath = process.env.VERCEL === '1' || process.env.VERCEL_ENV
   ? '/tmp/counters.json' 
   : path.join(__dirname, 'counters.json');
 const assetsPath = path.join(__dirname, 'assets');
+const useKV = kv && (process.env.KV_REST_API_URL || process.env.KV_URL);
 
 const imageDataUriCache = new Map();
 
@@ -88,7 +95,18 @@ async function imageToDataUri(imagePath) {
   }
 }
 
-function readStore() {
+async function readStore() {
+  if (useKV) {
+    try {
+      const data = await kv.get('counters');
+      if (data && typeof data === 'object') return data;
+      return {};
+    } catch (err) {
+      console.error('Failed to read from KV:', err);
+      return {};
+    }
+  }
+  
   try {
     const raw = fs.readFileSync(jsonPath, 'utf8');
     const data = JSON.parse(raw);
@@ -99,7 +117,16 @@ function readStore() {
   }
 }
 
-function writeStore(store) {
+async function writeStore(store) {
+  if (useKV) {
+    try {
+      await kv.set('counters', store);
+    } catch (err) {
+      console.error('Failed to write to KV:', err);
+    }
+    return;
+  }
+  
   try {
     if (jsonPath.startsWith('/tmp')) {
       try {
@@ -113,17 +140,17 @@ function writeStore(store) {
   }
 }
 
-function getAndIncrementCounter(name) {
-  const store = readStore();
+async function getAndIncrementCounter(name) {
+  const store = await readStore();
   const current = typeof store[name] === 'number' && Number.isFinite(store[name]) ? store[name] : 0;
   const nextValue = current + 1;
   store[name] = nextValue;
-  writeStore(store);
+  await writeStore(store);
   return nextValue;
 }
 
-function peekCounter(name) {
-  const store = readStore();
+async function peekCounter(name) {
+  const store = await readStore();
   const current = typeof store[name] === 'number' && Number.isFinite(store[name]) ? store[name] : 0;
   return current;
 }
@@ -436,7 +463,7 @@ app.get('/@:name', async (req, res) => {
   if (num && num > 0) {
     value = num;
   } else {
-    value = inc === 1 ? getAndIncrementCounter(name) : peekCounter(name);
+    value = inc === 1 ? await getAndIncrementCounter(name) : await peekCounter(name);
   }
 
   const characterImages = [
