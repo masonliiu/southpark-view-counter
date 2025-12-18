@@ -9,6 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(morgan('dev'));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 const limiter = rateLimit({
   windowMs: 60 * 1000,
@@ -140,11 +141,11 @@ function renderSouthParkCounter({
   const strValue = String(value).padStart(padding, '0');
   const displayStr = `${prefix || ''}${strValue}`;
 
-  const digitWidth = 32;
-  const digitHeight = 42;
-  const digitGap = 4;
-  const paddingX = 12;
-  const paddingY = 12;
+  const digitWidth = 140;
+  const digitHeight = 112;
+  const digitGap = 0;
+  const paddingX = 8;
+  const paddingY = 16;
 
   const totalWidth =
     paddingX * 2 + displayStr.length * digitWidth + (displayStr.length - 1) * digitGap;
@@ -161,17 +162,13 @@ function renderSouthParkCounter({
 
   const shapeRendering = pixelated === 1 ? 'crispEdges' : 'auto';
 
-  const digitAccents = [
-    '#f6b7b7',
-    '#f6e0b7',
-    '#f6f2b7',
-    '#c0f6b7',
-    '#b7f6e9',
-    '#b7d5f6',
-    '#cdb7f6',
-    '#f6b7e6',
-    '#f6c5b7',
-    '#b7f6c7',
+  const characterImages = [
+    '/assets/cartman.png',
+    '/assets/mr mackey.png',
+    '/assets/stan.png',
+    '/assets/kenny.png',
+    '/assets/timmy.png',
+    '/assets/wendy.png',
   ];
 
   let digitsSvg = '';
@@ -180,47 +177,24 @@ function renderSouthParkCounter({
       paddingX + idx * (digitWidth + digitGap) + offset;
     const charBaseY = paddingY;
     const isDigit = /[0-9]/.test(char);
-    const accentColor = isDigit
-      ? digitAccents[Number(char) % digitAccents.length]
-      : '#f4e0b7';
+    const imgHref = characterImages[idx % characterImages.length];
 
     digitsSvg += `
       <g transform="translate(${x}, ${charBaseY})">
-        <circle
-          cx="${digitWidth / 2}"
-          cy="${digitHeight * -0.1}"
-          r="${digitWidth / 2.3}"
-          fill="${accentColor}"
-          stroke="${palette.digitBorder}"
-          stroke-width="2"
-        />
-        <rect
-          x="${digitWidth * 0.18}"
-          y="${digitHeight * 0.12}"
-          rx="6"
-          ry="6"
-          width="${digitWidth * 0.64}"
-          height="${digitHeight * 0.8}"
-          fill="${palette.digitBg}"
-          stroke="${palette.digitBorder}"
-          stroke-width="2"
-        />
-        <rect
+        <image
+          href="${imgHref}"
           x="0"
-          y="${digitHeight * 0.32}"
-          rx="4"
-          ry="4"
+          y="0"
           width="${digitWidth}"
-          height="${digitHeight * 0.75}"
-          fill="${accentColor}"
-          opacity="0.95"
+          height="${digitHeight}"
+          preserveAspectRatio="xMidYMid slice"
         />
         <text
           x="${digitWidth / 2}"
-          y="${digitHeight * 0.85}"
+          y="${digitHeight * 0.67}"
           text-anchor="middle"
           font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-          font-size="22"
+          font-size="${digitHeight * 0.6}"
           font-weight="700"
           fill="${palette.text}"
         >
