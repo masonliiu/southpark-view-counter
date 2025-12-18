@@ -10,11 +10,12 @@ try {
 } catch (e) {
   console.warn('sharp not available, using original images (may be large)');
 }
-let kv;
+let Redis;
+let redisClient;
 try {
-  kv = require('@vercel/kv');
+  Redis = require('@upstash/redis');
 } catch (e) {
-  console.warn('@vercel/kv not available, using file system storage');
+  console.warn('@upstash/redis package not available, using file system storage');
 }
 
 const app = express();
@@ -47,7 +48,19 @@ const jsonPath = process.env.VERCEL === '1' || process.env.VERCEL_ENV
   ? '/tmp/counters.json' 
   : path.join(__dirname, 'counters.json');
 const assetsPath = path.join(__dirname, 'assets');
-const useKV = kv && (process.env.KV_REST_API_URL || process.env.KV_URL);
+
+const useRedis = Redis && (
+  process.env.UPSTASH_REDIS_REST_URL || 
+  process.env.UPSTASH_REDIS_REST_TOKEN
+);
+
+if (useRedis && Redis) {
+  try {
+    redisClient = Redis.fromEnv();
+  } catch (err) {
+    console.error('Failed to initialize Upstash Redis:', err);
+  }
+}
 
 const imageDataUriCache = new Map();
 
@@ -96,13 +109,16 @@ async function imageToDataUri(imagePath) {
 }
 
 async function readStore() {
-  if (useKV) {
+  if (useRedis && redisClient) {
     try {
-      const data = await kv.get('counters');
-      if (data && typeof data === 'object') return data;
+      const data = await redisClient.get('counters');
+      if (data) {
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
       return {};
     } catch (err) {
-      console.error('Failed to read from KV:', err);
+      console.error('Failed to read from Redis:', err);
       return {};
     }
   }
@@ -118,11 +134,11 @@ async function readStore() {
 }
 
 async function writeStore(store) {
-  if (useKV) {
+  if (useRedis && redisClient) {
     try {
-      await kv.set('counters', store);
+      await redisClient.set('counters', JSON.stringify(store));
     } catch (err) {
-      console.error('Failed to write to KV:', err);
+      console.error('Failed to write to Redis:', err);
     }
     return;
   }
