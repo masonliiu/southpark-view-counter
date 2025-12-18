@@ -24,7 +24,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-const jsonPath = path.join(__dirname, 'counters.json');
+// Use /tmp for Vercel serverless functions (only writable location)
+// Fallback to local file for development
+const jsonPath = process.env.VERCEL === '1' || process.env.VERCEL_ENV
+  ? '/tmp/counters.json' 
+  : path.join(__dirname, 'counters.json');
 const assetsPath = path.join(__dirname, 'assets');
 
 const imageDataUriCache = new Map();
@@ -62,8 +66,17 @@ function readStore() {
 
 function writeStore(store) {
   try {
+    // Ensure /tmp directory exists (it should, but just in case)
+    if (jsonPath.startsWith('/tmp')) {
+      try {
+        fs.mkdirSync('/tmp', { recursive: true });
+      } catch {
+        // Directory might already exist, ignore
+      }
+    }
     fs.writeFileSync(jsonPath, JSON.stringify(store), 'utf8');
-  } catch {
+  } catch (err) {
+    console.error('Failed to write store:', err);
   }
 }
 
