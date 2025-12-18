@@ -1,5 +1,4 @@
-node_modules/
-counter.sqlite
-*.sqlite
-.env
-.DS_Store
+node_modules
+counter.db
+npm-debug.log*
+*.log
