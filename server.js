@@ -134,6 +134,7 @@ function renderSouthParkCounter({
   darkmode,
   pixelated,
   prefix,
+  baseUrl = '',
 }) {
   const prefersDark = false;
   const palette = pickPalette(darkmode, prefersDark);
@@ -156,6 +157,14 @@ function renderSouthParkCounter({
     '/assets/timmy.png',
     '/assets/wendy.png',
   ];
+
+  // Convert relative paths to absolute URLs
+  const getAbsoluteUrl = (relativePath) => {
+    if (baseUrl && relativePath.startsWith('/')) {
+      return `${baseUrl}${relativePath}`;
+    }
+    return relativePath;
+  };
 
   const characterScales = {
     '/assets/cartman.png': 1.0,
@@ -222,6 +231,7 @@ function renderSouthParkCounter({
   Array.from(displayStr).forEach((char, idx) => {
     const isDigit = /[0-9]/.test(char);
     const imgHref = characterImages[idx % characterImages.length];
+    const absoluteImgHref = getAbsoluteUrl(imgHref);
     const pos = characterPositions[imgHref] || { x: 0.5, y: 0.75 };
     const rotation = characterRotations[imgHref] || 0;
     const charScale = characterScales[imgHref] || 1.0;
@@ -239,7 +249,7 @@ function renderSouthParkCounter({
     digitsSvg += `
       <g transform="translate(${currentX}, ${charBaseY})">
         <image
-          href="${imgHref}"
+          href="${absoluteImgHref}"
           x="0"
           y="0"
           width="${charWidth}"
@@ -345,6 +355,11 @@ app.get('/@:name', (req, res) => {
     value = inc === 1 ? getAndIncrementCounter(name) : peekCounter(name);
   }
 
+  // Construct base URL from request (handle proxies like Render)
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host') || req.hostname;
+  const baseUrl = `${protocol}://${host}`;
+
   const svg = renderSouthParkCounter({
     value,
     padding,
@@ -354,6 +369,7 @@ app.get('/@:name', (req, res) => {
     darkmode,
     pixelated,
     prefix,
+    baseUrl,
   });
 
   res.setHeader('Content-Type', 'image/svg+xml');
