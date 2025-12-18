@@ -57,8 +57,21 @@ const useRedis = Redis && (
 if (useRedis && Redis) {
   try {
     redisClient = Redis.fromEnv();
+    console.log('✅ Upstash Redis initialized successfully');
+    console.log('   Redis URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
+    console.log('   Redis Token:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
   } catch (err) {
-    console.error('Failed to initialize Upstash Redis:', err);
+    console.error('❌ Failed to initialize Upstash Redis:', err);
+    redisClient = null;
+  }
+} else {
+  console.log('ℹ️  Using file system storage (Redis not configured)');
+  if (!Redis) {
+    console.log('   @upstash/redis package not installed');
+  } else {
+    console.log('   Environment variables not set:');
+    console.log('   - UPSTASH_REDIS_REST_URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
+    console.log('   - UPSTASH_REDIS_REST_TOKEN:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
   }
 }
 
@@ -114,11 +127,14 @@ async function readStore() {
       const data = await redisClient.get('counters');
       if (data) {
         const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-        if (parsed && typeof parsed === 'object') return parsed;
+        if (parsed && typeof parsed === 'object') {
+          console.log('📖 Read from Redis:', Object.keys(parsed).length, 'counters');
+          return parsed;
+        }
       }
       return {};
     } catch (err) {
-      console.error('Failed to read from Redis:', err);
+      console.error('❌ Failed to read from Redis:', err);
       return {};
     }
   }
@@ -137,8 +153,9 @@ async function writeStore(store) {
   if (useRedis && redisClient) {
     try {
       await redisClient.set('counters', JSON.stringify(store));
+      console.log('💾 Wrote to Redis:', Object.keys(store).length, 'counters');
     } catch (err) {
-      console.error('Failed to write to Redis:', err);
+      console.error('❌ Failed to write to Redis:', err);
     }
     return;
   }
@@ -419,6 +436,34 @@ function renderSouthParkCounter({
 `;
 }
 
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'ok',
+    storage: 'file',
+    redis: {
+      configured: false,
+      connected: false,
+      error: null
+    }
+  };
+
+  if (useRedis && redisClient) {
+    health.storage = 'redis';
+    health.redis.configured = true;
+    
+    try {
+      await redisClient.get('__health_check__');
+      health.redis.connected = true;
+    } catch (err) {
+      health.redis.connected = false;
+      health.redis.error = err.message;
+      health.status = 'degraded';
+    }
+  }
+
+  res.json(health);
+});
+
 app.get('/', (req, res) => {
   res.type('text/plain').send(
     [
@@ -426,6 +471,7 @@ app.get('/', (req, res) => {
       '',
       'Usage:',
       '  GET /@:name',
+      '  GET /health (check Redis connection status)',
       '',
       'Example:',
       '  /@masonliiu?theme=southpark&padding=7&darkmode=auto',
