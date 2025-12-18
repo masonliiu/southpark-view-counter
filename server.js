@@ -20,6 +20,32 @@ const limiter = rateLimit({
 app.use(limiter);
 
 const jsonPath = path.join(__dirname, 'counters.json');
+const assetsPath = path.join(__dirname, 'assets');
+
+// Cache for image data URIs
+const imageDataUriCache = new Map();
+
+function imageToDataUri(imagePath) {
+  // Check cache first
+  if (imageDataUriCache.has(imagePath)) {
+    return imageDataUriCache.get(imagePath);
+  }
+
+  try {
+    const fullPath = path.join(assetsPath, path.basename(imagePath));
+    const imageBuffer = fs.readFileSync(fullPath);
+    const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    const base64 = imageBuffer.toString('base64');
+    const dataUri = `data:${mimeType};base64,${base64}`;
+    
+    // Cache the result
+    imageDataUriCache.set(imagePath, dataUri);
+    return dataUri;
+  } catch (err) {
+    console.error(`Failed to load image ${imagePath}:`, err);
+    return imagePath; // Fallback to original path
+  }
+}
 
 function readStore() {
   try {
@@ -134,7 +160,7 @@ function renderSouthParkCounter({
   darkmode,
   pixelated,
   prefix,
-  baseUrl = '',
+  useDataUris = true,
 }) {
   const prefersDark = false;
   const palette = pickPalette(darkmode, prefersDark);
@@ -158,10 +184,10 @@ function renderSouthParkCounter({
     '/assets/wendy.png',
   ];
 
-  // Convert relative paths to absolute URLs
-  const getAbsoluteUrl = (relativePath) => {
-    if (baseUrl && relativePath.startsWith('/')) {
-      return `${baseUrl}${relativePath}`;
+  // Convert image paths to data URIs or URLs
+  const getImageHref = (relativePath) => {
+    if (useDataUris) {
+      return imageToDataUri(relativePath);
     }
     return relativePath;
   };
@@ -230,11 +256,11 @@ function renderSouthParkCounter({
   let currentX = paddingX + offset;
   Array.from(displayStr).forEach((char, idx) => {
     const isDigit = /[0-9]/.test(char);
-    const imgHref = characterImages[idx % characterImages.length];
-    const absoluteImgHref = getAbsoluteUrl(imgHref);
-    const pos = characterPositions[imgHref] || { x: 0.5, y: 0.75 };
-    const rotation = characterRotations[imgHref] || 0;
-    const charScale = characterScales[imgHref] || 1.0;
+    const imgPath = characterImages[idx % characterImages.length];
+    const imgHref = getImageHref(imgPath);
+    const pos = characterPositions[imgPath] || { x: 0.5, y: 0.75 };
+    const rotation = characterRotations[imgPath] || 0;
+    const charScale = characterScales[imgPath] || 1.0;
     
     const charWidth = digitWidth * charScale;
     const charHeight = digitHeight * charScale;
@@ -249,7 +275,7 @@ function renderSouthParkCounter({
     digitsSvg += `
       <g transform="translate(${currentX}, ${charBaseY})">
         <image
-          href="${absoluteImgHref}"
+          href="${imgHref}"
           x="0"
           y="0"
           width="${charWidth}"
@@ -355,11 +381,6 @@ app.get('/@:name', (req, res) => {
     value = inc === 1 ? getAndIncrementCounter(name) : peekCounter(name);
   }
 
-  // Construct base URL from request (handle proxies like Render)
-  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
-  const host = req.get('x-forwarded-host') || req.get('host') || req.hostname;
-  const baseUrl = `${protocol}://${host}`;
-
   const svg = renderSouthParkCounter({
     value,
     padding,
@@ -369,7 +390,7 @@ app.get('/@:name', (req, res) => {
     darkmode,
     pixelated,
     prefix,
-    baseUrl,
+    useDataUris: true, // Always use data URIs for GitHub compatibility
   });
 
   res.setHeader('Content-Type', 'image/svg+xml');
