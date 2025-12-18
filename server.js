@@ -27,11 +27,9 @@ app.use(limiter);
 const jsonPath = path.join(__dirname, 'counters.json');
 const assetsPath = path.join(__dirname, 'assets');
 
-// Cache for image data URIs
 const imageDataUriCache = new Map();
 
 function imageToDataUri(imagePath) {
-  // Check cache first
   if (imageDataUriCache.has(imagePath)) {
     return imageDataUriCache.get(imagePath);
   }
@@ -43,12 +41,11 @@ function imageToDataUri(imagePath) {
     const base64 = imageBuffer.toString('base64');
     const dataUri = `data:${mimeType};base64,${base64}`;
     
-    // Cache the result
     imageDataUriCache.set(imagePath, dataUri);
     return dataUri;
   } catch (err) {
     console.error(`Failed to load image ${imagePath}:`, err);
-    return imagePath; // Fallback to original path
+    return imagePath;
   }
 }
 
@@ -188,7 +185,6 @@ function renderSouthParkCounter({
     '/assets/wendy.png',
   ];
 
-  // Always use data URIs for GitHub compatibility (camo proxy strips external image refs)
   const getImageHref = (relativePath) => {
     return imageToDataUri(relativePath);
   };
@@ -408,8 +404,13 @@ app.use((req, res) => {
   res.status(404).type('text/plain').send('Not found');
 });
 
-app.listen(PORT, () => {
-  console.log(`South Park counter listening on http://localhost:${PORT}`);
-});
+// Export for Vercel serverless functions
+module.exports = app;
 
+// Only listen if not in Vercel environment
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`South Park counter listening on http://localhost:${PORT}`);
+  });
+}
 
