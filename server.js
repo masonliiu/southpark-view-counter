@@ -57,24 +57,26 @@ async function imageToDataUri(imagePath) {
     const fullPath = path.join(assetsPath, path.basename(imagePath));
     let imageBuffer;
     
-    // Compress image if sharp is available to reduce SVG size for GitHub
-    // GitHub's camo proxy has size limits, so we need to optimize
+    // Aggressively compress images for GitHub compatibility
+    // GitHub's camo proxy may block data URIs, but we'll try to minimize size
     if (sharp) {
       try {
-        // Resize to max 300px width (maintains quality while reducing size significantly)
-        // Use high compression to minimize file size
+        // Resize to 120px max width with aggressive compression
+        // This should keep total SVG under 500KB
         imageBuffer = await sharp(fullPath)
-          .resize(300, null, { 
+          .resize(120, null, { 
             withoutEnlargement: true,
-            fit: 'inside'
+            fit: 'inside',
+            kernel: sharp.kernel.lanczos3
           })
           .png({ 
             compressionLevel: 9,
-            adaptiveFiltering: true
+            adaptiveFiltering: true,
+            palette: true,
+            quality: 70
           })
           .toBuffer();
       } catch (sharpErr) {
-        // Fallback to original if sharp fails
         console.warn(`Sharp compression failed for ${imagePath}, using original:`, sharpErr);
         imageBuffer = fs.readFileSync(fullPath);
       }
@@ -360,7 +362,8 @@ function renderSouthParkCounter({
     currentX += charWidth + digitGap;
   });
 
-  return `<?xml version="1.0" encoding="UTF-8"?>
+  // Ensure SVG is properly formatted for GitHub
+  return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
   xmlns="http://www.w3.org/2000/svg"
   xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -368,6 +371,7 @@ function renderSouthParkCounter({
   height="${scaledHeight}"
   viewBox="0 0 ${totalWidth} ${totalHeight}"
   shape-rendering="${shapeRendering}"
+  role="img"
 >
   <defs>
     <style type="text/css"><![CDATA[
@@ -418,10 +422,20 @@ app.get('/', (req, res) => {
   );
 });
 
-app.get('/@:name', (req, res) => {
+app.get('/@:name', async (req, res) => {
   const name = req.params.name;
   if (!name || typeof name !== 'string' || name.length > 128) {
     return res.status(400).type('text/plain').send('Invalid name');
+  }
+
+  // Check if request is from GitHub's camo proxy
+  const userAgent = req.get('user-agent') || '';
+  const isGitHub = userAgent.includes('github-camo') || 
+                   req.get('referer')?.includes('github.com') ||
+                   req.get('x-forwarded-for')?.includes('github');
+  
+  if (isGitHub) {
+    console.log('Request detected from GitHub, using optimized settings');
   }
 
   let parsed;
@@ -441,6 +455,29 @@ app.get('/@:name', (req, res) => {
     value = inc === 1 ? getAndIncrementCounter(name) : peekCounter(name);
   }
 
+  // Ensure all images are loaded before rendering
+  // In serverless, cache might not persist, so load on demand
+  const characterImages = [
+    '/assets/stan.png',
+    '/assets/kyle.png',    
+    '/assets/mr mackey.png',
+    '/assets/kenny.png',
+    '/assets/cartman.png',
+    '/assets/timmy.png',
+    '/assets/wendy.png',
+  ];
+  
+  // Load any missing images
+  for (const imgPath of characterImages) {
+    if (!imageDataUriCache.has(imgPath)) {
+      try {
+        await imageToDataUri(imgPath);
+      } catch (err) {
+        console.error(`Failed to load ${imgPath}:`, err);
+      }
+    }
+  }
+
   const svg = renderSouthParkCounter({
     value,
     padding,
@@ -452,11 +489,17 @@ app.get('/@:name', (req, res) => {
     prefix,
   });
 
+  // Set proper headers for GitHub compatibility
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Log SVG size for debugging
+  const svgSize = Buffer.byteLength(svg, 'utf8') / 1024;
+  console.log(`SVG size: ${svgSize.toFixed(2)}KB`);
 
   return res.send(svg);
 });
