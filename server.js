@@ -144,12 +144,45 @@ function renderSouthParkCounter({
   const digitWidth = 140;
   const digitHeight = 112;
   const digitGap = 0;
-  const paddingX = 4;
-  const paddingY = 16;
+  const paddingX = 0;
+  const paddingY = 0;
 
-  const totalWidth =
-    paddingX * 2 + displayStr.length * digitWidth + (displayStr.length - 1) * digitGap;
-  const totalHeight = paddingY * 2 + digitHeight * 2.2;
+  const characterImages = [
+    '/assets/cartman.png',
+    '/assets/mr mackey.png',
+    '/assets/stan.png',
+    '/assets/kenny.png',
+    '/assets/timmy.png',
+    '/assets/wendy.png',
+  ];
+
+  const characterScales = {
+    '/assets/cartman.png': 1.0,
+    '/assets/mr mackey.png': 1.1,
+    '/assets/stan.png': 1.0,
+    '/assets/kenny.png': 1.0,
+    '/assets/timmy.png': 1.2,
+    '/assets/wendy.png': 1.0,
+  };
+
+  let totalWidth = paddingX * 2;
+  Array.from(displayStr).forEach((char, idx) => {
+    const imgHref = characterImages[idx % characterImages.length];
+    const charScale = characterScales[imgHref] || 1.0;
+    totalWidth += digitWidth * charScale;
+    if (idx < displayStr.length - 1) {
+      totalWidth += digitGap;
+    }
+  });
+  
+  let maxHeight = digitHeight;
+  Array.from(displayStr).forEach((char, idx) => {
+    const imgHref = characterImages[idx % characterImages.length];
+    const charScale = characterScales[imgHref] || 1.0;
+    maxHeight = Math.max(maxHeight, digitHeight * charScale);
+  });
+  const totalHeight = maxHeight;
+  const bottomAlignY = maxHeight;
 
   const scaledWidth = totalWidth * scale;
   const scaledHeight = totalHeight * scale;
@@ -162,50 +195,44 @@ function renderSouthParkCounter({
 
   const shapeRendering = pixelated === 1 ? 'crispEdges' : 'auto';
 
-  const characterImages = [
-    '/assets/cartman.png',
-    '/assets/mr mackey.png',
-    '/assets/stan.png',
-    '/assets/kenny.png',
-    '/assets/timmy.png',
-    '/assets/wendy.png',
-  ];
-
   const characterPositions = {
-    '/assets/cartman.png': { x: 0.67, y: 0.64 },
-    '/assets/mr mackey.png': { x: 0.64, y: 0.57 },
-    '/assets/stan.png': { x: 0.67, y: 0.64 },
-    '/assets/kenny.png': { x: 0.67, y: 0.64 },
-    '/assets/timmy.png': { x: 0.5, y: 0.75 },
-    '/assets/wendy.png': { x: 0.5, y: 0.75 },
+    '/assets/cartman.png': { x: 0.68, y: 0.7 },
+    '/assets/mr mackey.png': { x: 0.63, y: 0.57 },
+    '/assets/stan.png': { x: 0.7, y: 0.7 },
+    '/assets/kenny.png': { x: 0.7, y: 0.7 },
+    '/assets/timmy.png': { x: 0.76, y: 0.49 },
+    '/assets/wendy.png': { x: 0.68, y: 0.7 },
   };
 
   let digitsSvg = '';
+  let currentX = paddingX + offset;
   Array.from(displayStr).forEach((char, idx) => {
-    const x =
-      paddingX + idx * (digitWidth + digitGap) + offset;
-    const charBaseY = paddingY;
     const isDigit = /[0-9]/.test(char);
     const imgHref = characterImages[idx % characterImages.length];
     const pos = characterPositions[imgHref] || { x: 0.5, y: 0.75 };
+    const charScale = characterScales[imgHref] || 1.0;
+    
+    const charWidth = digitWidth * charScale;
+    const charHeight = digitHeight * charScale;
+    const charBaseY = bottomAlignY - charHeight;
 
     digitsSvg += `
-      <g transform="translate(${x}, ${charBaseY})">
+      <g transform="translate(${currentX}, ${charBaseY})">
         <image
           href="${imgHref}"
           x="0"
           y="0"
-          width="${digitWidth}"
-          height="${digitHeight}"
-          preserveAspectRatio="xMidYMid slice"
+          width="${charWidth}"
+          height="${charHeight}"
+          preserveAspectRatio="meet"
         />
         <text
-          x="${digitWidth * pos.x}"
-          y="${digitHeight * pos.y}"
+          x="${charWidth * pos.x}"
+          y="${charHeight * pos.y}"
           text-anchor="middle"
           dominant-baseline="middle"
           font-family="'Press Start 2P', 'VT323', 'Courier New', monospace"
-          font-size="${digitHeight * 0.28}"
+          font-size="${charHeight * 0.28}"
           font-weight="normal"
           fill="${palette.text}"
         >
@@ -213,6 +240,8 @@ function renderSouthParkCounter({
         </text>
       </g>
     `;
+    
+    currentX += charWidth + digitGap;
   });
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -235,18 +264,6 @@ function renderSouthParkCounter({
     </filter>
   </defs>
   <g transform="translate(0, ${baselineOffset}) scale(${scale})">
-    <rect
-      x="0"
-      y="0"
-      rx="10"
-      ry="10"
-      width="${totalWidth}"
-      height="${totalHeight}"
-      fill="${palette.bg}"
-      stroke="${palette.frame}"
-      stroke-width="2"
-      filter="url(#soft-shadow)"
-    />
     ${digitsSvg}
   </g>
 </svg>
