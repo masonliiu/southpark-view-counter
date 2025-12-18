@@ -2,7 +2,10 @@
   "name": "southpark-profile-counter",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
