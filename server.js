@@ -51,17 +51,34 @@ const assetsPath = path.join(__dirname, 'assets');
 
 const useRedis = Redis && (
   process.env.UPSTASH_REDIS_REST_URL || 
-  process.env.UPSTASH_REDIS_REST_TOKEN
+  process.env.UPSTASH_REDIS_REST_TOKEN ||
+  process.env.REDIS_URL
 );
 
 if (useRedis && Redis) {
   try {
-    redisClient = Redis.fromEnv();
-    console.log('✅ Upstash Redis initialized successfully');
-    console.log('   Redis URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
-    console.log('   Redis Token:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
+    if (process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_TOKEN) {
+      redisClient = Redis.fromEnv();
+      console.log('✅ Upstash Redis initialized successfully (fromEnv)');
+      console.log('   Redis URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
+      console.log('   Redis Token:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
+    } else if (process.env.REDIS_URL) {
+      if (process.env.REDIS_URL.startsWith('https://')) {
+        redisClient = new Redis({
+          url: process.env.REDIS_URL,
+          token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN || process.env.KV_REST_API_TOKEN,
+        });
+        console.log('✅ Redis initialized successfully (REDIS_URL - Upstash REST API)');
+        console.log('   Redis URL: Set');
+        console.log('   Redis Token:', (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN || process.env.KV_REST_API_TOKEN) ? 'Set' : 'Not set');
+      } else {
+        console.warn('⚠️  REDIS_URL is not an Upstash REST API URL (must start with https://)');
+        console.warn('   Standard Redis URLs (redis://) are not supported. Use Upstash Redis REST API.');
+        redisClient = null;
+      }
+    }
   } catch (err) {
-    console.error('❌ Failed to initialize Upstash Redis:', err);
+    console.error('❌ Failed to initialize Redis:', err);
     redisClient = null;
   }
 } else {
@@ -72,6 +89,7 @@ if (useRedis && Redis) {
     console.log('   Environment variables not set:');
     console.log('   - UPSTASH_REDIS_REST_URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
     console.log('   - UPSTASH_REDIS_REST_TOKEN:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
+    console.log('   - REDIS_URL:', process.env.REDIS_URL ? 'Set' : 'Not set');
   }
 }
 
