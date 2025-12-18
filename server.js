@@ -148,10 +148,11 @@ function renderSouthParkCounter({
   const paddingY = 0;
 
   const characterImages = [
-    '/assets/cartman.png',
-    '/assets/mr mackey.png',
     '/assets/stan.png',
+    '/assets/kyle.png',    
+    '/assets/mr mackey.png',
     '/assets/kenny.png',
+    '/assets/cartman.png',
     '/assets/timmy.png',
     '/assets/wendy.png',
   ];
@@ -163,6 +164,7 @@ function renderSouthParkCounter({
     '/assets/kenny.png': 1.0,
     '/assets/timmy.png': 1.2,
     '/assets/wendy.png': 1.0,
+    '/assets/kyle.png': 1.1,
   };
 
   let totalWidth = paddingX * 2;
@@ -197,11 +199,22 @@ function renderSouthParkCounter({
 
   const characterPositions = {
     '/assets/cartman.png': { x: 0.68, y: 0.7 },
-    '/assets/mr mackey.png': { x: 0.63, y: 0.57 },
+    '/assets/mr mackey.png': { x: 0.67, y: 0.57 },
     '/assets/stan.png': { x: 0.7, y: 0.7 },
     '/assets/kenny.png': { x: 0.7, y: 0.7 },
-    '/assets/timmy.png': { x: 0.76, y: 0.49 },
-    '/assets/wendy.png': { x: 0.68, y: 0.7 },
+    '/assets/timmy.png': { x: 0.75, y: 0.49 },
+    '/assets/wendy.png': { x: 0.69, y: 0.7 },
+    '/assets/kyle.png': { x: 0.75, y: 0.56 },
+  };
+
+  const characterRotations = {
+    '/assets/cartman.png': 0,
+    '/assets/mr mackey.png': 0,
+    '/assets/stan.png': 0,
+    '/assets/kenny.png': 0,
+    '/assets/timmy.png': 0,
+    '/assets/wendy.png': 0,
+    '/assets/kyle.png': 5,
   };
 
   let digitsSvg = '';
@@ -210,11 +223,18 @@ function renderSouthParkCounter({
     const isDigit = /[0-9]/.test(char);
     const imgHref = characterImages[idx % characterImages.length];
     const pos = characterPositions[imgHref] || { x: 0.5, y: 0.75 };
+    const rotation = characterRotations[imgHref] || 0;
     const charScale = characterScales[imgHref] || 1.0;
     
     const charWidth = digitWidth * charScale;
     const charHeight = digitHeight * charScale;
     const charBaseY = bottomAlignY - charHeight;
+    
+    const textX = charWidth * pos.x;
+    const textY = charHeight * pos.y;
+    const textTransform = rotation !== 0 
+      ? `rotate(${rotation} ${textX} ${textY})`
+      : '';
 
     digitsSvg += `
       <g transform="translate(${currentX}, ${charBaseY})">
@@ -227,8 +247,9 @@ function renderSouthParkCounter({
           preserveAspectRatio="meet"
         />
         <text
-          x="${charWidth * pos.x}"
-          y="${charHeight * pos.y}"
+          x="${textX}"
+          y="${textY}"
+          transform="${textTransform}"
           text-anchor="middle"
           dominant-baseline="middle"
           font-family="'Press Start 2P', 'VT323', 'Courier New', monospace"
