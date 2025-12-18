@@ -183,7 +183,6 @@ function renderSouthParkCounter({
   darkmode,
   pixelated,
   prefix,
-  baseUrl = '',
 }) {
   const prefersDark = false;
   const palette = pickPalette(darkmode, prefersDark);
@@ -207,16 +206,9 @@ function renderSouthParkCounter({
     '/assets/wendy.png',
   ];
 
-  // Use external URLs for GitHub compatibility (camo proxy can't handle data URIs)
+  // Always use data URIs - GitHub's camo proxy blocks external image refs in SVGs
+  // This makes the SVG self-contained and works on GitHub
   const getImageHref = (relativePath) => {
-    if (baseUrl) {
-      // Encode the path properly, especially for files with spaces
-      const encodedPath = relativePath.split('/').map(part => 
-        part === '' ? '' : encodeURIComponent(part)
-      ).join('/');
-      return `${baseUrl}${encodedPath}`;
-    }
-    // Fallback to data URI if no baseUrl (for local dev)
     return imageToDataUri(relativePath);
   };
 
@@ -411,11 +403,6 @@ app.get('/@:name', (req, res) => {
     value = inc === 1 ? getAndIncrementCounter(name) : peekCounter(name);
   }
 
-  // Construct base URL for image references (GitHub camo needs absolute URLs)
-  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
-  const host = req.get('x-forwarded-host') || req.get('host') || req.hostname;
-  const baseUrl = `${protocol}://${host}`;
-
   const svg = renderSouthParkCounter({
     value,
     padding,
@@ -425,7 +412,6 @@ app.get('/@:name', (req, res) => {
     darkmode,
     pixelated,
     prefix,
-    baseUrl,
   });
 
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
