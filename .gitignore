@@ -1,4 +1,5 @@
 node_modules
 counter.db
+counters.json
 npm-debug.log*
 *.log

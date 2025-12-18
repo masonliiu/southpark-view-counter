@@ -1,9 +1,9 @@
 const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const Database = require('better-sqlite3');
 const { z } = require('zod');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,41 +18,39 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-const dbPath = path.join(__dirname, 'counter.db');
-const db = new Database(dbPath);
+const jsonPath = path.join(__dirname, 'counters.json');
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS counters (
-    name TEXT PRIMARY KEY,
-    value INTEGER NOT NULL DEFAULT 0
-  );
-`);
+function readStore() {
+  try {
+    const raw = fs.readFileSync(jsonPath, 'utf8');
+    const data = JSON.parse(raw);
+    if (data && typeof data === 'object') return data;
+    return {};
+  } catch {
+    return {};
+  }
+}
 
-const getCounterStmt = db.prepare(
-  'SELECT value FROM counters WHERE name = ?'
-);
-const insertCounterStmt = db.prepare(
-  'INSERT INTO counters (name, value) VALUES (?, ?)'
-);
-const updateCounterStmt = db.prepare(
-  'UPDATE counters SET value = ? WHERE name = ?'
-);
+function writeStore(store) {
+  try {
+    fs.writeFileSync(jsonPath, JSON.stringify(store), 'utf8');
+  } catch {
+  }
+}
 
 function getAndIncrementCounter(name) {
-  const row = getCounterStmt.get(name);
-  if (!row) {
-    insertCounterStmt.run(name, 1);
-    return 1;
-  }
-  const nextValue = row.value + 1;
-  updateCounterStmt.run(nextValue, name);
+  const store = readStore();
+  const current = typeof store[name] === 'number' && Number.isFinite(store[name]) ? store[name] : 0;
+  const nextValue = current + 1;
+  store[name] = nextValue;
+  writeStore(store);
   return nextValue;
 }
 
 function peekCounter(name) {
-  const row = getCounterStmt.get(name);
-  if (!row) return 0;
-  return row.value;
+  const store = readStore();
+  const current = typeof store[name] === 'number' && Number.isFinite(store[name]) ? store[name] : 0;
+  return current;
 }
 
 const querySchema = z.object({
