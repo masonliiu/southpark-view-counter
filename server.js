@@ -4,6 +4,13 @@ const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
 const path = require('path');
 const fs = require('fs');
+let sharp;
+try {
+  sharp = require('sharp');
+} catch (e) {
+  // sharp not available, will use original images
+  console.warn('sharp not available, using original images (may be large)');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,14 +48,40 @@ const assetsPath = path.join(__dirname, 'assets');
 
 const imageDataUriCache = new Map();
 
-function imageToDataUri(imagePath) {
+async function imageToDataUri(imagePath) {
   if (imageDataUriCache.has(imagePath)) {
     return imageDataUriCache.get(imagePath);
   }
 
   try {
     const fullPath = path.join(assetsPath, path.basename(imagePath));
-    const imageBuffer = fs.readFileSync(fullPath);
+    let imageBuffer;
+    
+    // Compress image if sharp is available to reduce SVG size for GitHub
+    // GitHub's camo proxy has size limits, so we need to optimize
+    if (sharp) {
+      try {
+        // Resize to max 300px width (maintains quality while reducing size significantly)
+        // Use high compression to minimize file size
+        imageBuffer = await sharp(fullPath)
+          .resize(300, null, { 
+            withoutEnlargement: true,
+            fit: 'inside'
+          })
+          .png({ 
+            compressionLevel: 9,
+            adaptiveFiltering: true
+          })
+          .toBuffer();
+      } catch (sharpErr) {
+        // Fallback to original if sharp fails
+        console.warn(`Sharp compression failed for ${imagePath}, using original:`, sharpErr);
+        imageBuffer = fs.readFileSync(fullPath);
+      }
+    } else {
+      imageBuffer = fs.readFileSync(fullPath);
+    }
+    
     const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
     const base64 = imageBuffer.toString('base64');
     const dataUri = `data:${mimeType};base64,${base64}`;
@@ -208,8 +241,13 @@ function renderSouthParkCounter({
 
   // Always use data URIs - GitHub's camo proxy blocks external image refs in SVGs
   // This makes the SVG self-contained and works on GitHub
+  // Images should be pre-loaded in cache at startup
   const getImageHref = (relativePath) => {
-    return imageToDataUri(relativePath);
+    if (imageDataUriCache.has(relativePath)) {
+      return imageDataUriCache.get(relativePath);
+    }
+    // Fallback - return path if not cached (shouldn't happen)
+    return relativePath;
   };
 
   const characterScales = {
@@ -426,6 +464,37 @@ app.get('/@:name', (req, res) => {
 app.use((req, res) => {
   res.status(404).type('text/plain').send('Not found');
 });
+
+// Pre-load and compress all images at startup
+const characterImages = [
+  '/assets/stan.png',
+  '/assets/kyle.png',    
+  '/assets/mr mackey.png',
+  '/assets/kenny.png',
+  '/assets/cartman.png',
+  '/assets/timmy.png',
+  '/assets/wendy.png',
+];
+
+async function preloadImages() {
+  console.log('Pre-loading and compressing images...');
+  for (const imgPath of characterImages) {
+    try {
+      await imageToDataUri(imgPath);
+      const cached = imageDataUriCache.get(imgPath);
+      const sizeKB = cached ? (cached.length * 3 / 4 / 1024).toFixed(0) : 0;
+      console.log(`Loaded ${imgPath}: ${sizeKB}KB`);
+    } catch (err) {
+      console.error(`Failed to pre-load ${imgPath}:`, err);
+    }
+  }
+  const totalSize = Array.from(imageDataUriCache.values())
+    .reduce((sum, uri) => sum + (uri.length * 3 / 4), 0) / 1024 / 1024;
+  console.log(`All images loaded. Total size: ${totalSize.toFixed(2)}MB`);
+}
+
+// Pre-load images on startup
+preloadImages().catch(console.error);
 
 // Export for Vercel serverless functions
 module.exports = app;

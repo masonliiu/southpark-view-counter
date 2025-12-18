@@ -19,6 +19,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "morgan": "^1.10.1",
+    "sharp": "^0.33.0",
     "zod": "^4.2.1"
   },
   "devDependencies": {
