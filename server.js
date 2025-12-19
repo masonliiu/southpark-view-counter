@@ -59,12 +59,12 @@ if (useRedis && Redis) {
         url: process.env.KV_REST_API_URL,
         token: process.env.KV_REST_API_TOKEN,
       });
-      console.log('✅ Upstash Redis initialized successfully (KV_REST_API_URL)');
+      console.log('Upstash Redis initialized successfully (KV_REST_API_URL)');
       console.log('   Redis URL: Set');
       console.log('   Redis Token: Set');
     } else if (process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_TOKEN) {
       redisClient = Redis.fromEnv();
-      console.log('✅ Upstash Redis initialized successfully (fromEnv)');
+      console.log('Upstash Redis initialized successfully (fromEnv)');
       console.log('   Redis URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
       console.log('   Redis Token:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
     } else if (process.env.REDIS_URL && process.env.REDIS_URL.startsWith('https://')) {
@@ -72,22 +72,22 @@ if (useRedis && Redis) {
         url: process.env.REDIS_URL,
         token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN,
       });
-      console.log('✅ Redis initialized successfully (REDIS_URL - Upstash REST API)');
+      console.log('Redis initialized successfully (REDIS_URL - Upstash REST API)');
       console.log('   Redis URL: Set');
       console.log('   Redis Token:', (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN) ? 'Set' : 'Not set');
     } else {
-      console.warn('⚠️  Redis environment variables not properly configured');
+      console.warn('Redis environment variables not properly configured');
       console.warn('   KV_REST_API_URL:', process.env.KV_REST_API_URL ? 'Set' : 'Not set');
       console.warn('   KV_REST_API_TOKEN:', process.env.KV_REST_API_TOKEN ? 'Set' : 'Not set');
       redisClient = null;
     }
   } catch (err) {
-    console.error('❌ Failed to initialize Redis:', err);
+    console.error('Failed to initialize Redis:', err);
     console.error('   Error details:', err.message);
     redisClient = null;
   }
 } else {
-  console.log('ℹ️  Using file system storage (Redis not configured)');
+  console.log('Using file system storage (Redis not configured)');
   console.log('   Redis package:', Redis ? 'Loaded' : 'Not loaded');
   console.log('   useRedis condition:', useRedis);
   if (!Redis) {
@@ -161,7 +161,7 @@ async function readStore() {
       }
       return {};
     } catch (err) {
-      console.error('❌ Failed to read from Redis:', err);
+      console.error('Failed to read from Redis:', err);
       return {};
     }
   }
@@ -180,9 +180,9 @@ async function writeStore(store) {
   if (useRedis && redisClient) {
     try {
       await redisClient.set('counters', JSON.stringify(store));
-      console.log('💾 Wrote to Redis:', Object.keys(store).length, 'counters');
+      console.log('Wrote to Redis:', Object.keys(store).length, 'counters');
     } catch (err) {
-      console.error('❌ Failed to write to Redis:', err);
+      console.error('Failed to write to Redis:', err);
     }
     return;
   }
@@ -262,6 +262,7 @@ const querySchema = z.object({
     .transform((v) => (v == null ? undefined : Number(v)))
     .pipe(z.number().int().min(0).max(1).optional())
     .default(1),
+  order: z.string().optional().default(''),
 });
 
 const lightPalette = {
@@ -280,6 +281,35 @@ const darkPalette = {
   text: '#fdfdfd',
 };
 
+const characterKeyToPath = {
+  stan: '/assets/stan.png',
+  kyle: '/assets/kyle.png',
+  'mr-mackey': '/assets/mr mackey.png',
+  kenny: '/assets/kenny.png',
+  cartman: '/assets/cartman.png',
+  timmy: '/assets/timmy.png',
+  wendy: '/assets/wendy.png',
+};
+
+function parseOrder(orderStr) {
+  if (!orderStr) return null;
+  const keys = orderStr
+    .split(',')
+    .map((k) => k.trim().toLowerCase())
+    .filter(Boolean);
+  const seen = new Set();
+  const resolved = [];
+  for (const rawKey of keys) {
+    const key = rawKey.replace(/\s+/g, '-');
+    const path = characterKeyToPath[key];
+    if (path && !seen.has(path)) {
+      seen.add(path);
+      resolved.push(path);
+    }
+  }
+  return resolved.length ? resolved : null;
+}
+
 function pickPalette(darkmode, prefersDark = false) {
   if (darkmode === '1') return darkPalette;
   if (darkmode === '0') return lightPalette;
@@ -295,6 +325,7 @@ function renderSouthParkCounter({
   darkmode,
   pixelated,
   prefix,
+  characterOrder,
 }) {
   const prefersDark = false;
   const palette = pickPalette(darkmode, prefersDark);
@@ -308,7 +339,7 @@ function renderSouthParkCounter({
   const paddingX = 0;
   const paddingY = 0;
 
-  const characterImages = [
+  const defaultCharacterImages = [
     '/assets/stan.png',
     '/assets/kyle.png',    
     '/assets/mr mackey.png',
@@ -317,6 +348,10 @@ function renderSouthParkCounter({
     '/assets/timmy.png',
     '/assets/wendy.png',
   ];
+
+  const characterImages = characterOrder && characterOrder.length
+    ? characterOrder
+    : defaultCharacterImages;
 
   const getImageHref = (relativePath) => {
     if (imageDataUriCache.has(relativePath)) {
@@ -531,11 +566,12 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  const baseUrl = process.env.VERCEL_URL
+  const runtimeBaseUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : `${req.protocol}://${req.get('host')}`;
 
-  const exampleUrl = `${baseUrl}/@your-github-username?theme=southpark&padding=7&darkmode=auto`;
+  const baseUrl = 'https://southpark-view-counter.vercel.app';
+  const exampleUrl = `${baseUrl}/@demo?theme=southpark&padding=7&darkmode=auto&inc=0&num=1234567`;
 
   res.type('text/html').send(`<!DOCTYPE html>
 <html lang="en">
@@ -544,154 +580,389 @@ app.get('/', (req, res) => {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>South Park Profile Counter</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
-      padding: 32px 16px 48px;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #f7f3e4 0, #e3dcc7 35%, #c9c0a6 100%);
-      color: #1f242b;
+      padding: 24px 16px;
+      font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
+      background-image: url('/assets/south-park-chromebook-wallpaper.jpg');
+      background-size: cover;
+      background-position: top;
+      background-attachment: fixed;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
+      align-items: flex-start;
     }
     main {
-      max-width: 840px;
+      max-width: 700px;
       width: 100%;
-      background: #fdf9ec;
-      border-radius: 18px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
-      padding: 28px 24px 32px;
-      border: 2px solid #222;
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      border: 4px solid #000;
+      box-shadow: 8px 8px 0 #000;
+      margin-top: 20px;
     }
     h1 {
-      margin: 0 0 12px;
-      font-size: 1.8rem;
-      letter-spacing: 0.03em;
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+      color: #000;
+      text-transform: uppercase;
     }
     h2 {
-      margin: 24px 0 8px;
+      margin: 20px 0 8px;
       font-size: 1.1rem;
+      color: #000;
     }
     p {
-      margin: 6px 0 10px;
-      line-height: 1.5;
+      margin: 6px 0;
+      line-height: 1.4;
+      color: #333;
+      font-size: 0.95rem;
     }
     code {
-      font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 0.9rem;
-      background: #222;
-      color: #fdfdfd;
-      padding: 3px 6px;
-      border-radius: 5px;
+      font-family: "Courier New", monospace;
+      font-size: 0.85rem;
+      background: #ffeb3b;
+      color: #000;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid #000;
     }
     pre {
-      margin: 8px 0 12px;
-      padding: 10px 12px;
-      background: #222;
-      color: #fdfdfd;
-      border-radius: 8px;
+      margin: 8px 0;
+      padding: 10px;
+      background: #e3f2fd;
+      border: 2px solid #000;
+      border-radius: 6px;
       overflow-x: auto;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
     pre code {
       background: transparent;
+      border: none;
       padding: 0;
-    }
-    ul {
-      margin: 6px 0 10px 18px;
-      padding: 0;
-    }
-    li {
-      margin: 4px 0;
-    }
-    .pill {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: #222;
-      color: #fdfdfd;
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 4px;
     }
     .example-image {
-      display: block;
-      margin: 14px 0 10px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: #1f242b;
+      margin: 12px 0;
+      padding: 8px;
+      background: #fff;
+      border: 2px solid #000;
+      border-radius: 6px;
+      display: inline-block;
     }
     .example-image img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+    .char-order {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 12px 0;
+      padding: 12px;
+      background: #f5f5f5;
+      border: 2px solid #000;
+      border-radius: 6px;
+    }
+    .char-item {
+      width: 60px;
+      height: 60px;
+      cursor: grab;
+      border: 2px solid #000;
+      border-radius: 4px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s;
+    }
+    .char-item:hover {
+      transform: scale(1.1);
+    }
+    .char-item:active {
+      cursor: grabbing;
+    }
+    .char-item.dragging {
+      opacity: 0.5;
+    }
+    .char-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .builder {
+      margin-top: 12px;
+      padding: 16px;
+      background: #fff3cd;
+      border: 2px solid #000;
+      border-radius: 6px;
+    }
+    .builder-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .builder-field {
+      flex: 1 1 140px;
+      min-width: 140px;
+    }
+    .builder-field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #000;
+    }
+    .builder-field input,
+    .builder-field select {
+      width: 100%;
+      padding: 6px 8px;
+      font-size: 0.9rem;
+      border: 2px solid #000;
+      border-radius: 4px;
+      background: #fff;
+      color: #000;
+      font-family: inherit;
+    }
+    .builder button {
+      border: 3px solid #000;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      cursor: pointer;
+      background: #4caf50;
+      color: #000;
+      font-family: inherit;
+      text-transform: uppercase;
+      transition: transform 0.1s;
+      box-shadow: 3px 3px 0 #000;
+    }
+    .builder button:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 #000;
+    }
+    .builder button:active {
+      transform: translate(0, 0);
+      box-shadow: 2px 2px 0 #000;
+    }
+    .builder-output {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 2px dashed #000;
+    }
+    .builder-output-row {
+      margin-bottom: 10px;
+    }
+    .builder-output-row span {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #000;
+    }
+    .builder-output-row code {
+      display: block;
+      white-space: nowrap;
+      overflow-x: auto;
+      padding: 6px;
+      margin-top: 4px;
+    }
+    .builder-preview {
+      margin-top: 12px;
+      padding: 8px;
+      background: #fff;
+      border: 2px solid #000;
+      border-radius: 6px;
+    }
+    .builder-preview img {
       max-width: 100%;
       height: auto;
       display: block;
     }
     .small-note {
-      font-size: 0.82rem;
-      opacity: 0.8;
-    }
-    .muted {
-      color: #555;
-    }
-    .section-divider {
-      margin: 22px 0;
-      border: 0;
-      border-top: 1px dashed rgba(0, 0, 0, 0.18);
+      font-size: 0.8rem;
+      color: #666;
+      font-style: italic;
     }
   </style>
 </head>
 <body>
   <main>
     <header>
-      <div class="pill">GitHub Profile View Counter</div>
-      <h1>South Park Profile Counter</h1>
-      <p class="muted">A tiny SVG API that tracks how many times your profile has been viewed, rendered as South Park characters.</p>
+      <h1>South Park View Counter</h1>
+      <p>Track your profile views with South Park characters!</p>
     </header>
 
-    <hr class="section-divider" />
-
     <section>
-      <h2>1. Basic usage</h2>
-      <p>Every request to <code>/@:name</code> returns an SVG image and bumps the counter for that name by 1.</p>
-      <pre><code>${baseUrl}/@your-github-username?theme=southpark&padding=7&darkmode=auto</code></pre>
-      <div class="small-note muted">Replace <code>your-github-username</code> with your actual GitHub username.</div>
-    </section>
-
-    <section>
-      <h2>2. Add it to your GitHub README</h2>
-      <p>Paste this into your README.md:</p>
+      <h2>Quick Start</h2>
+      <p>Change "demo" to a unique name and add this to your README:</p>
       <pre><code>![profile-views](${exampleUrl})</code></pre>
       <div class="example-image">
         <img src="${exampleUrl}" alt="South Park profile counter example" />
       </div>
-      <p class="small-note muted">GitHub caches images aggressively, so the number may update with a short delay.</p>
     </section>
 
     <section>
-      <h2>3. Query parameters</h2>
-      <p>You can tweak how the counter looks with URL params:</p>
-      <ul>
-        <li><code>theme</code>: <code>southpark</code> (current theme)</li>
-        <li><code>padding</code>: <code>1–16</code> digits shown (default <code>7</code>)</li>
-        <li><code>offset</code>: <code>-500..500</code> horizontal shift (default <code>0</code>)</li>
-        <li><code>scale</code>: <code>0.1–2</code> image scale (default <code>1</code>)</li>
-        <li><code>align</code>: <code>top</code> | <code>center</code> | <code>bottom</code> (default <code>top</code>)</li>
-        <li><code>pixelated</code>: <code>0</code> | <code>1</code> (default <code>1</code>)</li>
-        <li><code>darkmode</code>: <code>0</code> | <code>1</code> | <code>auto</code> (default <code>auto</code>)</li>
-        <li><code>num</code>: override display number (default <code>0</code>, disabled)</li>
-        <li><code>prefix</code>: text prefix before the digits, e.g. <code>SP-</code></li>
-        <li><code>inc</code>: <code>1</code> to increment on view (default) or <code>0</code> to only read</li>
-      </ul>
+      <h2>Customization</h2>
+      <p>Drag to reorder. First character shows the leftmost digit.</p>
+      <div id="char-order" class="char-order">
+        <div class="char-item" draggable="true" data-key="stan">
+          <img src="/assets/stan.png" alt="Stan" />
+        </div>
+        <div class="char-item" draggable="true" data-key="kyle">
+          <img src="/assets/kyle.png" alt="Kyle" />
+        </div>
+        <div class="char-item" draggable="true" data-key="mr-mackey">
+          <img src="/assets/mr mackey.png" alt="Mr. Mackey" />
+        </div>
+        <div class="char-item" draggable="true" data-key="kenny">
+          <img src="/assets/kenny.png" alt="Kenny" />
+        </div>
+        <div class="char-item" draggable="true" data-key="cartman">
+          <img src="/assets/cartman.png" alt="Cartman" />
+        </div>
+        <div class="char-item" draggable="true" data-key="timmy">
+          <img src="/assets/timmy.png" alt="Timmy" />
+        </div>
+        <div class="char-item" draggable="true" data-key="wendy">
+          <img src="/assets/wendy.png" alt="Wendy" />
+        </div>
+      </div>
     </section>
 
     <section>
-      <h2>4. Health & debugging</h2>
-      <ul>
-        <li><code>/health</code> – simple JSON health check and storage info</li>
-        <li><code>/debug-redis</code> – extra Redis details (only for debugging)</li>
-      </ul>
+      <h2>Customize Your Counter</h2>
+      <div class="builder">
+        <div class="builder-row">
+          <div class="builder-field">
+            <label for="b-name">Name</label>
+            <input id="b-name" type="text" placeholder="your-github-username" value="your-github-username" />
+          </div>
+          <div class="builder-field">
+            <label for="b-padding">Digits</label>
+            <input id="b-padding" type="number" min="1" max="16" value="7" />
+          </div>
+          <div class="builder-field">
+            <label for="b-darkmode">Dark Mode</label>
+            <select id="b-darkmode">
+              <option value="auto" selected>Auto</option>
+              <option value="1">Dark</option>
+              <option value="0">Light</option>
+            </select>
+          </div>
+          <div class="builder-field">
+            <label for="b-prefix">Prefix (optional)</label>
+            <input id="b-prefix" type="text" placeholder="SP-" />
+          </div>
+        </div>
+        <input id="b-order" type="hidden" value="stan,kyle,mr-mackey,kenny,cartman,timmy,wendy" />
+        <button type="button" id="b-generate">Generate Link</button>
+        <div class="builder-output">
+          <div class="builder-output-row">
+            <span>URL:</span>
+            <code id="b-url">${exampleUrl}</code>
+          </div>
+          <div class="builder-output-row">
+            <span>Markdown:</span>
+            <code id="b-md">![profile-views](${exampleUrl})</code>
+          </div>
+          <div class="builder-preview">
+            <span>Preview:</span>
+            <img id="b-preview" src="${exampleUrl}" alt="Preview" />
+          </div>
+        </div>
+      </div>
     </section>
   </main>
+  <script>
+    (function () {
+      var baseUrl = ${JSON.stringify(baseUrl)};
+      var btn = document.getElementById('b-generate');
+      if (!btn) return;
+
+      function buildUrl(forPreview) {
+        var name = (document.getElementById('b-name').value || '').trim() || 'your-github-username';
+        var padding = parseInt(document.getElementById('b-padding').value, 10);
+        if (!Number.isFinite(padding) || padding < 1 || padding > 16) padding = 7;
+        var darkmode = document.getElementById('b-darkmode').value || 'auto';
+        var prefix = document.getElementById('b-prefix').value || '';
+        var order = (document.getElementById('b-order').value || '').trim();
+
+        var params = new URLSearchParams();
+        params.set('theme', 'southpark');
+        params.set('padding', String(padding));
+        params.set('darkmode', darkmode);
+        if (prefix) params.set('prefix', prefix);
+        if (order) params.set('order', order);
+        
+        if (forPreview) {
+          params.set('inc', '0');
+          params.set('num', '1234567');
+        }
+
+        var url = baseUrl + '/@' + encodeURIComponent(name) + '?' + params.toString();
+        return url;
+      }
+
+      function update() {
+        var url = buildUrl(false);
+        var previewUrl = buildUrl(true);
+        var md = '![profile-views](' + url + ')';
+        var urlEl = document.getElementById('b-url');
+        var mdEl = document.getElementById('b-md');
+        var imgEl = document.getElementById('b-preview');
+        if (urlEl) urlEl.textContent = url;
+        if (mdEl) mdEl.textContent = md;
+        if (imgEl) imgEl.src = previewUrl;
+      }
+
+      btn.addEventListener('click', update);
+
+      var orderContainer = document.getElementById('char-order');
+      if (orderContainer) {
+        var dragEl = null;
+        orderContainer.addEventListener('dragstart', function (e) {
+          var target = e.target.closest('.char-item');
+          if (!target) return;
+          dragEl = target;
+          target.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        orderContainer.addEventListener('dragover', function (e) {
+          if (!dragEl) return;
+          e.preventDefault();
+          var target = e.target.closest('.char-item');
+          if (!target || target === dragEl) return;
+          var rect = target.getBoundingClientRect();
+          var before = (e.clientX - rect.left) / rect.width < 0.5;
+          if (before) {
+            orderContainer.insertBefore(dragEl, target);
+          } else {
+            orderContainer.insertBefore(dragEl, target.nextSibling);
+          }
+        });
+        orderContainer.addEventListener('dragend', function () {
+          if (dragEl) dragEl.classList.remove('dragging');
+          dragEl = null;
+          var items = orderContainer.querySelectorAll('.char-item');
+          var keys = [];
+          items.forEach(function (el) {
+            var key = el.getAttribute('data-key');
+            if (key) keys.push(key);
+          });
+          var hiddenOrder = document.getElementById('b-order');
+          if (hiddenOrder) hiddenOrder.value = keys.join(',');
+        });
+      }
+    })();
+  </script>
 </body>
 </html>`);
 });
@@ -718,7 +989,7 @@ app.get('/@:name', async (req, res) => {
     return res.status(400).type('text/plain').send('Invalid query params');
   }
 
-  const { num, prefix, inc, padding, offset, scale, align, darkmode, pixelated } =
+  const { num, prefix, inc, padding, offset, scale, align, darkmode, pixelated, order } =
     parsed;
 
   let value;
@@ -728,17 +999,20 @@ app.get('/@:name', async (req, res) => {
     value = inc === 1 ? await getAndIncrementCounter(name) : await peekCounter(name);
   }
 
-  const characterImages = [
-    '/assets/stan.png',
-    '/assets/kyle.png',    
-    '/assets/mr mackey.png',
-    '/assets/kenny.png',
-    '/assets/cartman.png',
-    '/assets/timmy.png',
-    '/assets/wendy.png',
-  ];
+  const customOrder = parseOrder(order);
+  const imagesToLoad = customOrder && customOrder.length
+    ? customOrder
+    : [
+        '/assets/stan.png',
+        '/assets/kyle.png',
+        '/assets/mr mackey.png',
+        '/assets/kenny.png',
+        '/assets/cartman.png',
+        '/assets/timmy.png',
+        '/assets/wendy.png',
+      ];
   
-  for (const imgPath of characterImages) {
+  for (const imgPath of imagesToLoad) {
     if (!imageDataUriCache.has(imgPath)) {
       try {
         await imageToDataUri(imgPath);
@@ -757,6 +1031,7 @@ app.get('/@:name', async (req, res) => {
     darkmode,
     pixelated,
     prefix,
+    characterOrder: imagesToLoad,
   });
 
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
