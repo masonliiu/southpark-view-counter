@@ -468,6 +468,36 @@ function renderSouthParkCounter({
 `;
 }
 
+app.get('/debug-redis', async (req, res) => {
+  const debug = {
+    hasRedisPackage: !!Redis,
+    useRedis: useRedis,
+    redisClient: !!redisClient,
+    envVars: {
+      KV_REST_API_URL: process.env.KV_REST_API_URL ? 'Set (length: ' + process.env.KV_REST_API_URL.length + ')' : 'Not set',
+      KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN ? 'Set (length: ' + process.env.KV_REST_API_TOKEN.length + ')' : 'Not set',
+      UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set',
+      UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set',
+      REDIS_URL: process.env.REDIS_URL ? 'Set (type: ' + (process.env.REDIS_URL.startsWith('https://') ? 'rest-api' : 'standard') + ')' : 'Not set',
+    },
+    testResult: null,
+    error: null
+  };
+
+  if (redisClient) {
+    try {
+      await redisClient.set('__test__', 'ok');
+      const result = await redisClient.get('__test__');
+      debug.testResult = result === 'ok' ? 'Success' : 'Failed (wrong value)';
+    } catch (err) {
+      debug.testResult = 'Failed';
+      debug.error = err.message;
+    }
+  }
+
+  res.json(debug);
+});
+
 app.get('/health', async (req, res) => {
   const health = {
     status: 'ok',
