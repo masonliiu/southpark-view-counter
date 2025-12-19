@@ -22,6 +22,7 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
 app.use(morgan('dev'));
 app.use('/assets', express.static(path.join(__dirname, 'assets'), {
   setHeaders: (res, path) => {
