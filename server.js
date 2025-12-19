@@ -679,21 +679,34 @@ app.get('/', (req, res) => {
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.1s;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      position: relative;
+      user-select: none;
     }
     .char-item:hover {
-      transform: scale(1.1);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
     .char-item:active {
       cursor: grabbing;
     }
     .char-item.dragging {
-      opacity: 0.5;
+      opacity: 0.8;
+      transform: scale(1.15) rotate(2deg);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+      border-color: #4caf50;
+      z-index: 1000;
+      cursor: grabbing;
+    }
+    .char-item.drag-over {
+      border-color: #4caf50;
+      background: #e8f5e9;
     }
     .char-item img {
       width: 100%;
       height: 100%;
       object-fit: contain;
+      pointer-events: none;
     }
     .builder {
       margin-top: 12px;
@@ -801,39 +814,11 @@ app.get('/', (req, res) => {
     </header>
 
     <section>
-      <h2>Quick Start</h2>
-      <p>Change "demo" to a unique name and add this to your README:</p>
+      <h2>How to use</h2>
+      <p>Change <code>demo</code> to a unique id and add this to your README:</p>
       <pre><code>![profile-views](${exampleUrl})</code></pre>
       <div class="example-image">
         <img src="${exampleUrl}" alt="South Park profile counter example" />
-      </div>
-    </section>
-
-    <section>
-      <h2>Customization</h2>
-      <p>Drag to reorder. First character shows the leftmost digit.</p>
-      <div id="char-order" class="char-order">
-        <div class="char-item" draggable="true" data-key="stan">
-          <img src="/assets/stan.png" alt="Stan" />
-        </div>
-        <div class="char-item" draggable="true" data-key="kyle">
-          <img src="/assets/kyle.png" alt="Kyle" />
-        </div>
-        <div class="char-item" draggable="true" data-key="mr-mackey">
-          <img src="/assets/mr mackey.png" alt="Mr. Mackey" />
-        </div>
-        <div class="char-item" draggable="true" data-key="kenny">
-          <img src="/assets/kenny.png" alt="Kenny" />
-        </div>
-        <div class="char-item" draggable="true" data-key="cartman">
-          <img src="/assets/cartman.png" alt="Cartman" />
-        </div>
-        <div class="char-item" draggable="true" data-key="timmy">
-          <img src="/assets/timmy.png" alt="Timmy" />
-        </div>
-        <div class="char-item" draggable="true" data-key="wendy">
-          <img src="/assets/wendy.png" alt="Wendy" />
-        </div>
       </div>
     </section>
 
@@ -862,6 +847,33 @@ app.get('/', (req, res) => {
             <input id="b-prefix" type="text" placeholder="SP-" />
           </div>
         </div>
+        <div style="margin: 16px 0;">
+          <p style="margin: 0 0 8px; font-weight: bold; font-size: 0.9rem;">Customization</p>
+          <p style="margin: 0 0 8px; font-size: 0.85rem;">Drag to reorder. First character shows the leftmost digit.</p>
+          <div id="char-order" class="char-order">
+            <div class="char-item" draggable="true" data-key="stan">
+              <img src="/assets/stan.png" alt="Stan" />
+            </div>
+            <div class="char-item" draggable="true" data-key="kyle">
+              <img src="/assets/kyle.png" alt="Kyle" />
+            </div>
+            <div class="char-item" draggable="true" data-key="mr-mackey">
+              <img src="/assets/mr mackey.png" alt="Mr. Mackey" />
+            </div>
+            <div class="char-item" draggable="true" data-key="kenny">
+              <img src="/assets/kenny.png" alt="Kenny" />
+            </div>
+            <div class="char-item" draggable="true" data-key="cartman">
+              <img src="/assets/cartman.png" alt="Cartman" />
+            </div>
+            <div class="char-item" draggable="true" data-key="timmy">
+              <img src="/assets/timmy.png" alt="Timmy" />
+            </div>
+            <div class="char-item" draggable="true" data-key="wendy">
+              <img src="/assets/wendy.png" alt="Wendy" />
+            </div>
+          </div>
+        </div>
         <input id="b-order" type="hidden" value="stan,kyle,mr-mackey,kenny,cartman,timmy,wendy" />
         <button type="button" id="b-generate">Generate Link</button>
         <div class="builder-output">
@@ -870,7 +882,7 @@ app.get('/', (req, res) => {
             <code id="b-url">${exampleUrl}</code>
           </div>
           <div class="builder-output-row">
-            <span>Markdown:</span>
+            <span>Copy & Paste to your README:</span>
             <code id="b-md">![profile-views](${exampleUrl})</code>
           </div>
           <div class="builder-preview">
@@ -928,18 +940,43 @@ app.get('/', (req, res) => {
       var orderContainer = document.getElementById('char-order');
       if (orderContainer) {
         var dragEl = null;
+        var dragOverEl = null;
+        
+        var emptyImg = document.createElement('img');
+        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        
         orderContainer.addEventListener('dragstart', function (e) {
           var target = e.target.closest('.char-item');
           if (!target) return;
           dragEl = target;
           target.classList.add('dragging');
           e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setDragImage(emptyImg, 0, 0);
         });
+        
         orderContainer.addEventListener('dragover', function (e) {
           if (!dragEl) return;
           e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          
           var target = e.target.closest('.char-item');
-          if (!target || target === dragEl) return;
+          if (!target || target === dragEl) {
+            if (dragOverEl && dragOverEl !== dragEl) {
+              dragOverEl.classList.remove('drag-over');
+            }
+            dragOverEl = null;
+            return;
+          }
+          
+          if (dragOverEl && dragOverEl !== target && dragOverEl !== dragEl) {
+            dragOverEl.classList.remove('drag-over');
+          }
+          
+          if (target !== dragEl) {
+            target.classList.add('drag-over');
+            dragOverEl = target;
+          }
+          
           var rect = target.getBoundingClientRect();
           var before = (e.clientX - rect.left) / rect.width < 0.5;
           if (before) {
@@ -948,9 +985,23 @@ app.get('/', (req, res) => {
             orderContainer.insertBefore(dragEl, target.nextSibling);
           }
         });
+        
+        orderContainer.addEventListener('dragleave', function (e) {
+          var target = e.target.closest('.char-item');
+          if (target && target !== dragEl) {
+            target.classList.remove('drag-over');
+          }
+        });
+        
         orderContainer.addEventListener('dragend', function () {
           if (dragEl) dragEl.classList.remove('dragging');
+          var allItems = orderContainer.querySelectorAll('.char-item');
+          allItems.forEach(function (el) {
+            el.classList.remove('drag-over');
+          });
           dragEl = null;
+          dragOverEl = null;
+          
           var items = orderContainer.querySelectorAll('.char-item');
           var keys = [];
           items.forEach(function (el) {
