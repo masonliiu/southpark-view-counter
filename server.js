@@ -13,7 +13,8 @@ try {
 let Redis;
 let redisClient;
 try {
-  Redis = require('@upstash/redis');
+  const upstashRedis = require('@upstash/redis');
+  Redis = upstashRedis.Redis;
 } catch (e) {
   console.warn('@upstash/redis package not available, using file system storage');
 }
@@ -34,13 +35,6 @@ const limiter = rateLimit({
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-           req.headers['x-real-ip'] || 
-           req.ip || 
-           req.socket.remoteAddress || 
-           'unknown';
-  },
 });
 app.use(limiter);
 
