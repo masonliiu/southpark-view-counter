@@ -470,7 +470,16 @@ app.get('/health', async (req, res) => {
     redis: {
       configured: false,
       connected: false,
-      error: null
+      error: null,
+      envVars: {
+        hasRedisPackage: !!Redis,
+        hasUpstashRedisRestUrl: !!process.env.UPSTASH_REDIS_REST_URL,
+        hasUpstashRedisRestToken: !!process.env.UPSTASH_REDIS_REST_TOKEN,
+        hasKvRestApiUrl: !!process.env.KV_REST_API_URL,
+        hasKvRestApiToken: !!process.env.KV_REST_API_TOKEN,
+        hasRedisUrl: !!process.env.REDIS_URL,
+        redisUrlType: process.env.REDIS_URL ? (process.env.REDIS_URL.startsWith('https://') ? 'rest-api' : 'standard') : null
+      }
     }
   };
 
