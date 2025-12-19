@@ -823,7 +823,7 @@ app.get('/', (req, res) => {
     </section>
 
     <section>
-      <h2>Customize Your Counter</h2>
+      <h2>Create Your Counter</h2>
       <div class="builder">
         <div class="builder-row">
           <div class="builder-field">
@@ -849,7 +849,7 @@ app.get('/', (req, res) => {
         </div>
         <div style="margin: 16px 0;">
           <p style="margin: 0 0 8px; font-weight: bold; font-size: 0.9rem;">Customization</p>
-          <p style="margin: 0 0 8px; font-size: 0.85rem;">Drag to reorder. First character shows the leftmost digit.</p>
+          <p style="margin: 0 0 8px; font-size: 0.85rem;">Drag to reorder. Characters save from the left side.</p>
           <div id="char-order" class="char-order">
             <div class="char-item" draggable="true" data-key="stan">
               <img src="/assets/stan.png" alt="Stan" />
@@ -875,7 +875,7 @@ app.get('/', (req, res) => {
           </div>
         </div>
         <input id="b-order" type="hidden" value="stan,kyle,mr-mackey,kenny,cartman,timmy,wendy" />
-        <button type="button" id="b-generate">Generate Link</button>
+        <button type="button" id="b-generate">Generate</button>
         <div class="builder-output">
           <div class="builder-output-row">
             <span>URL:</span>
@@ -916,7 +916,11 @@ app.get('/', (req, res) => {
         
         if (forPreview) {
           params.set('inc', '0');
-          params.set('num', '1234567');
+          var previewNum = '';
+          for (var i = 1; i <= padding; i++) {
+            previewNum += String(i % 10);
+          }
+          params.set('num', previewNum);
         }
 
         var url = baseUrl + '/@' + encodeURIComponent(name) + '?' + params.toString();
@@ -936,6 +940,15 @@ app.get('/', (req, res) => {
       }
 
       btn.addEventListener('click', update);
+      
+      var paddingInput = document.getElementById('b-padding');
+      if (paddingInput) {
+        paddingInput.addEventListener('input', function() {
+          if (document.getElementById('b-preview').src) {
+            update();
+          }
+        });
+      }
 
       var orderContainer = document.getElementById('char-order');
       if (orderContainer) {
