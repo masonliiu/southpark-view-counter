@@ -587,7 +587,7 @@ app.get('/', (req, res) => {
       margin: 0;
       padding: 24px 16px;
       font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
-      background-image: url('/assets/south-park-chromebook-wallpaper.jpg');
+      background-image: url('/assets/southpark.jpg');
       background-size: cover;
       background-position: top;
       background-attachment: fixed;
@@ -595,6 +595,25 @@ app.get('/', (req, res) => {
       display: flex;
       justify-content: center;
       align-items: flex-start;
+    }
+    ::-webkit-scrollbar {
+      width: 16px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #fff;
+      border-left: 2px solid #000;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4caf50;
+      border: 2px solid #000;
+      border-radius: 0;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #45a049;
+    }
+    html {
+      scrollbar-width: thick;
+      scrollbar-color: #4caf50 #fff;
     }
     main {
       max-width: 700px;
@@ -804,6 +823,127 @@ app.get('/', (req, res) => {
       color: #666;
       font-style: italic;
     }
+    .github-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #fff;
+      color: #000;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      border: 2px solid #000;
+      transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
+      margin-top: 12px;
+      box-shadow: 2px 2px 0 #000;
+    }
+    .github-link:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 4px 4px 0 #000;
+      background: #ffeb3b;
+    }
+    .github-link:active {
+      transform: translate(0, 0);
+      box-shadow: 2px 2px 0 #000;
+    }
+    .github-link svg {
+      width: 18px;
+      height: 18px;
+    }
+    .star-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #ffeb3b;
+      color: #000;
+      border: 2px solid #000;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-left: 12px;
+      text-decoration: none;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .star-badge:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 2px 2px 0 #000;
+    }
+    .copy-btn {
+      display: inline-block;
+      padding: 4px 10px;
+      margin-left: 8px;
+      background: #2196f3;
+      color: #fff;
+      border: 2px solid #000;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .copy-btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 2px 2px 0 #000;
+    }
+    .copy-btn:active {
+      transform: translate(0, 0);
+      box-shadow: 1px 1px 0 #000;
+    }
+    .copy-btn.copied {
+      background: #4caf50;
+    }
+    footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 2px solid #000;
+      text-align: center;
+    }
+    footer p {
+      margin: 8px 0;
+      font-size: 0.85rem;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .footer-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #000;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 0.9rem;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: background 0.2s;
+      border: 2px solid #000;
+    }
+    .footer-links a:hover {
+      background: #ffeb3b;
+    }
+    .footer-links svg {
+      width: 16px;
+      height: 16px;
+    }
+    .trademark {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px dashed #000;
+      font-size: 0.75rem;
+      color: #666;
+    }
+    .trademark strong {
+      color: #000;
+    }
   </style>
 </head>
 <body>
@@ -811,6 +951,14 @@ app.get('/', (req, res) => {
     <header>
       <h1>South Park View Counter</h1>
       <p>Track your profile views with South Park characters!</p>
+      <div style="display: flex; align-items: left; justify-content: left; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+        <a href="https://github.com/masonliiu/southpark-view-counter" target="_blank" rel="noopener noreferrer" class="github-link">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          View Source Code
+        </a>
+      </div>
     </header>
 
     <section>
@@ -879,11 +1027,17 @@ app.get('/', (req, res) => {
         <div class="builder-output">
           <div class="builder-output-row">
             <span>URL:</span>
-            <code id="b-url">${exampleUrl}</code>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <code id="b-url" style="flex: 1;">${exampleUrl}</code>
+              <button type="button" class="copy-btn" onclick="copyUrl(this)">Copy</button>
+            </div>
           </div>
           <div class="builder-output-row">
             <span>Copy & Paste to your README:</span>
-            <code id="b-md">![profile-views](${exampleUrl})</code>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <code id="b-md" style="flex: 1;">![profile-views](${exampleUrl})</code>
+              <button type="button" class="copy-btn" onclick="copyMarkdown(this)">Copy</button>
+            </div>
           </div>
           <div class="builder-preview">
             <span>Preview:</span>
@@ -892,6 +1046,28 @@ app.get('/', (req, res) => {
         </div>
       </div>
     </section>
+
+    <footer>
+      <p><strong>Made with ❤️ and original artwork</strong></p>
+      <div class="footer-links">
+        <a href="https://github.com/masonliiu/southpark-view-counter" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          Source code
+        </a>
+        <a href="https://github.com/masonliiu/southpark-view-counter/stargazers" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 .587l3.668 7.431 8.2 1.191-5.934 5.785 1.401 8.168L12 18.897l-7.335 3.856 1.401-8.168L.132 9.209l8.2-1.191L12 .587z"/>
+          </svg>
+          Star on GitHub
+        </a>
+      </div>
+      <div class="trademark">
+        <p><strong>South Park</strong> is a trademark of Comedy Partners. This project is not affiliated with, endorsed by, or associated with Comedy Partners or South Park Digital Studios.</p>
+        <p style="margin-top: 8px;">© 2025 South Park View Counter. MIT License.</p>
+      </div>
+    </footer>
   </main>
   <script>
     (function () {
@@ -938,6 +1114,44 @@ app.get('/', (req, res) => {
         if (mdEl) mdEl.textContent = md;
         if (imgEl) imgEl.src = previewUrl;
       }
+
+      window.copyUrl = function(btn) {
+        var urlEl = document.getElementById('b-url');
+        if (!urlEl) return;
+        var text = urlEl.textContent || urlEl.innerText;
+        navigator.clipboard.writeText(text).then(function() {
+          if (btn) {
+            var originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(function() {
+              btn.textContent = originalText;
+              btn.classList.remove('copied');
+            }, 2000);
+          }
+        }).catch(function(err) {
+          console.error('Failed to copy:', err);
+        });
+      };
+
+      window.copyMarkdown = function(btn) {
+        var mdEl = document.getElementById('b-md');
+        if (!mdEl) return;
+        var text = mdEl.textContent || mdEl.innerText;
+        navigator.clipboard.writeText(text).then(function() {
+          if (btn) {
+            var originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(function() {
+              btn.textContent = originalText;
+              btn.classList.remove('copied');
+            }, 2000);
+          }
+        }).catch(function(err) {
+          console.error('Failed to copy:', err);
+        });
+      };
 
       btn.addEventListener('click', update);
       
