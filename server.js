@@ -59,12 +59,7 @@ const useRedis = Redis && (
 
 if (useRedis && Redis) {
   try {
-    if (process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_TOKEN) {
-      redisClient = Redis.fromEnv();
-      console.log('✅ Upstash Redis initialized successfully (fromEnv)');
-      console.log('   Redis URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
-      console.log('   Redis Token:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
-    } else if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
       redisClient = new Redis({
         url: process.env.KV_REST_API_URL,
         token: process.env.KV_REST_API_TOKEN,
@@ -72,6 +67,11 @@ if (useRedis && Redis) {
       console.log('✅ Upstash Redis initialized successfully (KV_REST_API_URL)');
       console.log('   Redis URL: Set');
       console.log('   Redis Token: Set');
+    } else if (process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_TOKEN) {
+      redisClient = Redis.fromEnv();
+      console.log('✅ Upstash Redis initialized successfully (fromEnv)');
+      console.log('   Redis URL:', process.env.UPSTASH_REDIS_REST_URL ? 'Set' : 'Not set');
+      console.log('   Redis Token:', process.env.UPSTASH_REDIS_REST_TOKEN ? 'Set' : 'Not set');
     } else if (process.env.REDIS_URL && process.env.REDIS_URL.startsWith('https://')) {
       redisClient = new Redis({
         url: process.env.REDIS_URL,
@@ -82,14 +82,19 @@ if (useRedis && Redis) {
       console.log('   Redis Token:', (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN) ? 'Set' : 'Not set');
     } else {
       console.warn('⚠️  Redis environment variables not properly configured');
+      console.warn('   KV_REST_API_URL:', process.env.KV_REST_API_URL ? 'Set' : 'Not set');
+      console.warn('   KV_REST_API_TOKEN:', process.env.KV_REST_API_TOKEN ? 'Set' : 'Not set');
       redisClient = null;
     }
   } catch (err) {
     console.error('❌ Failed to initialize Redis:', err);
+    console.error('   Error details:', err.message);
     redisClient = null;
   }
 } else {
   console.log('ℹ️  Using file system storage (Redis not configured)');
+  console.log('   Redis package:', Redis ? 'Loaded' : 'Not loaded');
+  console.log('   useRedis condition:', useRedis);
   if (!Redis) {
     console.log('   @upstash/redis package not installed');
   } else {
