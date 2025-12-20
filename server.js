@@ -577,24 +577,59 @@ app.get('/', (req, res) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
   <title>South Park Profile Counter</title>
   <style>
     * {
       box-sizing: border-box;
     }
+    html {
+      -webkit-text-size-adjust: 100%;
+      -moz-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
     body {
       margin: 0;
       padding: 24px 16px;
       font-family: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
-      background-image: url('/assets/southpark.jpg');
-      background-size: cover;
-      background-position: top;
-      background-attachment: fixed;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: flex-start;
+      position: relative;
+    }
+    @media (max-width: 768px) {
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url('/assets/southpark.jpg');
+      background-size: cover;
+      background-position: top;
+      background-attachment: fixed;
+      filter: blur(2px) brightness(0.95);
+      z-index: -2;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(87, 84, 84, 0.35);
+      backdrop-filter: blur(2px);
+      z-index: -1;
     }
     ::-webkit-scrollbar {
       width: 16px;
@@ -643,7 +678,7 @@ app.get('/', (req, res) => {
       font-size: 0.95rem;
     }
     code {
-      font-family: "Courier New", monospace;
+      font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "Courier New", monospace;
       font-size: 0.85rem;
       background: #ffeb3b;
       color: #000;
@@ -701,6 +736,11 @@ app.get('/', (req, res) => {
       transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
       position: relative;
       user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      touch-action: none;
+      -webkit-touch-callout: none;
     }
     .char-item:hover {
       transform: translateY(-2px);
@@ -1168,9 +1208,38 @@ app.get('/', (req, res) => {
       if (orderContainer) {
         var dragEl = null;
         var dragOverEl = null;
+        var touchStartY = null;
+        var touchStartX = null;
+        var touchOffsetY = 0;
+        var touchOffsetX = 0;
         
         var emptyImg = document.createElement('img');
         emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        
+        function updateOrder() {
+          var items = orderContainer.querySelectorAll('.char-item');
+          var keys = [];
+          items.forEach(function (el) {
+            var key = el.getAttribute('data-key');
+            if (key) keys.push(key);
+          });
+          var hiddenOrder = document.getElementById('b-order');
+          if (hiddenOrder) hiddenOrder.value = keys.join(',');
+        }
+        
+        function clearDragState() {
+          if (dragEl) dragEl.classList.remove('dragging');
+          var allItems = orderContainer.querySelectorAll('.char-item');
+          allItems.forEach(function (el) {
+            el.classList.remove('drag-over');
+          });
+          dragEl = null;
+          dragOverEl = null;
+          touchStartY = null;
+          touchStartX = null;
+          touchOffsetY = 0;
+          touchOffsetX = 0;
+        }
         
         orderContainer.addEventListener('dragstart', function (e) {
           var target = e.target.closest('.char-item');
@@ -1221,22 +1290,81 @@ app.get('/', (req, res) => {
         });
         
         orderContainer.addEventListener('dragend', function () {
-          if (dragEl) dragEl.classList.remove('dragging');
-          var allItems = orderContainer.querySelectorAll('.char-item');
-          allItems.forEach(function (el) {
-            el.classList.remove('drag-over');
-          });
-          dragEl = null;
-          dragOverEl = null;
+          clearDragState();
+          updateOrder();
+        });
+        
+        orderContainer.addEventListener('touchstart', function (e) {
+          var target = e.target.closest('.char-item');
+          if (!target) return;
           
-          var items = orderContainer.querySelectorAll('.char-item');
-          var keys = [];
-          items.forEach(function (el) {
-            var key = el.getAttribute('data-key');
-            if (key) keys.push(key);
-          });
-          var hiddenOrder = document.getElementById('b-order');
-          if (hiddenOrder) hiddenOrder.value = keys.join(',');
+          var touch = e.touches[0];
+          touchStartY = touch.clientY;
+          touchStartX = touch.clientX;
+          dragEl = target;
+          target.classList.add('dragging');
+          
+          var rect = target.getBoundingClientRect();
+          touchOffsetY = touch.clientY - rect.top - rect.height / 2;
+          touchOffsetX = touch.clientX - rect.left - rect.width / 2;
+          
+          e.preventDefault();
+        }, { passive: false });
+        
+        orderContainer.addEventListener('touchmove', function (e) {
+          if (!dragEl || touchStartY === null) return;
+          
+          e.preventDefault();
+          var touch = e.touches[0];
+          var clientY = touch.clientY;
+          var clientX = touch.clientX;
+          
+          if (dragEl) {
+            dragEl.style.transform = 'translate(' + (clientX - touchStartX - touchOffsetX) + 'px, ' + (clientY - touchStartY - touchOffsetY) + 'px) scale(1.15) rotate(2deg)';
+          }
+          
+          var elementBelow = document.elementFromPoint(clientX, clientY);
+          var target = elementBelow ? elementBelow.closest('.char-item') : null;
+          
+          if (!target || target === dragEl) {
+            if (dragOverEl && dragOverEl !== dragEl) {
+              dragOverEl.classList.remove('drag-over');
+            }
+            dragOverEl = null;
+            return;
+          }
+          
+          if (dragOverEl && dragOverEl !== target && dragOverEl !== dragEl) {
+            dragOverEl.classList.remove('drag-over');
+          }
+          
+          if (target !== dragEl) {
+            target.classList.add('drag-over');
+            dragOverEl = target;
+            
+            var rect = target.getBoundingClientRect();
+            var before = (clientX - rect.left) / rect.width < 0.5;
+            if (before) {
+              orderContainer.insertBefore(dragEl, target);
+            } else {
+              orderContainer.insertBefore(dragEl, target.nextSibling);
+            }
+          }
+        }, { passive: false });
+        
+        orderContainer.addEventListener('touchend', function (e) {
+          if (dragEl) {
+            dragEl.style.transform = '';
+          }
+          clearDragState();
+          updateOrder();
+        });
+        
+        orderContainer.addEventListener('touchcancel', function (e) {
+          if (dragEl) {
+            dragEl.style.transform = '';
+          }
+          clearDragState();
         });
       }
     })();
