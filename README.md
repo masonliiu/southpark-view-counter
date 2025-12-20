@@ -5,6 +5,8 @@
 A customizable view counter that displays total profile/website views using South Park characters.
 
 <div align="center">
+  
+[![View Counter](https://southpark-view-counter.vercel.app/@masonliiu?theme=southpark&padding=7&darkmode=auto)](https://github.com/masonliiu/southpark-view-counter)
 
 [![Website](https://img.shields.io/badge/Website-Create%20Counter-4caf50?style=for-the-badge&logo=vercel)](https://southpark-view-counter.vercel.app)
 
